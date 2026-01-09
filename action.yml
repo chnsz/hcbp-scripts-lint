@@ -1,6 +1,6 @@
 name: 'Terraform Scripts Lint (Unified System)'
 description: 'Enhanced comprehensive linting tool for Terraform scripts using unified rules management system'
-author: 'DevOps Team'
+author: 'chnsz team'
 
 branding:
   icon: 'check-circle'
