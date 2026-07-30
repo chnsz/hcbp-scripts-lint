@@ -559,11 +559,13 @@ which already gate version checks on `providers.tf`.
 ### DC.001 - Comment Formatting Standards
 
 **Rule Description:** Validates that comments follow proper formatting standards. Comments must start with '#' character
-and maintain one space. Comments within HCL heredoc blocks are excluded from validation.
+and maintain one space. `#` characters inside single-quoted or double-quoted string literals are ignored. Inline
+end-of-line comments outside quotes are validated. Comments within HCL heredoc blocks are excluded from validation.
 
 **Purpose:**
 - Ensure consistent comment formatting
 - Improve code readability
+- Avoid false positives for `#` inside quoted string values
 - Support various content types
 
 ## SC (Security Code) Rules

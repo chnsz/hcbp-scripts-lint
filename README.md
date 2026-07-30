@@ -262,7 +262,7 @@ For more information, please refer to the [ST rules documentation](docs/rules/st
 For more information, please refer to the [IO rules documentation](docs/rules/io_rules.md).
 
 ### DC (Documentation/Comments) Rules
-- **DC.001**: Comment formatting standards
+- **DC.001**: Comment formatting standards (`#` + one space; ignore `#` inside quoted strings; exclude heredoc)
 
 For more information, please refer to the [DC rules documentation](docs/rules/dc_rules.md).
 

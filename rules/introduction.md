@@ -859,13 +859,16 @@ resource "huaweicloud_vpc" "test" {
 ### DC.001 - Comment Format Convention
 
 **Rule Description:** All comments must start with `#` character and maintain one English space between the `#` and the
-comment text. Comments within HCL heredoc blocks (<<EOT, <<EOF, etc.) are excluded from validation.
+comment text. `#` characters inside single-quoted or double-quoted string literals are ignored. Inline end-of-line
+comments (any `#` outside quotes) are validated. Comments within HCL heredoc blocks (<<EOT, <<EOF, etc.) are excluded
+from validation.
 
 **Purpose:**
 - Ensure comment format consistency and readability
 - Comply with Terraform community comment standards
 - Improve code professionalism and maintainability
 - Facilitate automated tool processing of comment content
+- Avoid false positives for `#` inside quoted string values
 - Avoid false positives when validating embedded scripts or configuration files in heredoc blocks
 
 **Error Example:**
@@ -905,6 +908,11 @@ variable "example" {
   type        = string
   default     = "test"                 # Default value for test environment
 }
+
+# '#' inside quoted strings is not treated as a comment
+resource "random_password" "test" {
+  override_special = "~!@#%^*-_=+?"
+}
 ```
 
 **HCL Heredoc Example (comments inside are excluded from validation):**
@@ -932,6 +940,7 @@ EOF
 - Use comments to document important configuration decisions and limitations
 - Keep comment content accurate and up-to-date
 - Avoid over-commenting obvious code
+- `#` characters inside single-quoted or double-quoted strings are ignored
 - Comments within heredoc blocks (<<EOT, <<EOF, etc.) are automatically excluded from validation
 
 ---

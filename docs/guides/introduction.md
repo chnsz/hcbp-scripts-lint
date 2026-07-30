@@ -83,7 +83,7 @@ class STRules:
 **Purpose**: Ensure consistent documentation and comment formatting.
 
 **Core Rules**:
-- **DC.001**: Comment format standardization (spacing after #)
+- **DC.001**: Comment format standardization (spacing after #; ignore `#` inside quotes)
 
 **Implementation Approach**:
 - Line-by-line comment analysis
