@@ -11,7 +11,8 @@ Rule Specifications:
 - There must be exactly one space between '#' and the comment text
 - Empty comments (only '#') are allowed and considered valid
 - Multiple spaces or tabs after '#' are considered violations
-- Comments within string literals are not validated (Terraform-specific)
+- Comments within single-quoted or double-quoted string literals are not validated
+- Inline end-of-line comments are validated (any '#' outside quotes starts a comment)
 - Comments within HCL heredoc blocks (<<EOT, <<EOF, etc.) are excluded from validation
 
 Valid Examples:
@@ -137,21 +138,57 @@ def _analyze_comment_formatting(lines: List[str]) -> List[Tuple[int, str, str]]:
             violations.append((line_num, "invalid_format", "Comment must start with '#' instead of '//'"))
             continue
             
-        # Skip lines without # comments
-        if '#' not in line:
-            continue
-            
-        # Use regex to find comment patterns in the current line
-        comment_match = re.search(r'#(.*)$', line)
+        # Treat the first '#' outside single/double quotes as a comment marker.
+        # '#' characters inside quoted string literals are ignored.
+        comment_pos = _find_comment_start(line)
         
-        if comment_match:
-            comment_text = comment_match.group(1)
+        if comment_pos is not None:
+            comment_text = line[comment_pos + 1:]
             violation = _validate_comment_spacing(comment_text)
             
             if violation:
                 violations.append((line_num, violation["type"], violation["message"]))
     
     return violations
+
+
+def _find_comment_start(line: str) -> Optional[int]:
+    """
+    Find the index of the first '#' that starts a comment on the line.
+
+    '#' characters inside single-quoted or double-quoted string literals are
+    ignored. Escaped quotes within strings (\\" or \\') do not end the string.
+    Any '#' outside quotes is treated as a comment start, including inline
+    end-of-line comments.
+
+    Args:
+        line (str): The line to search for a comment marker
+
+    Returns:
+        Optional[int]: Index of the comment '#' character, or None if not found
+    """
+    in_single_quote = False
+    in_double_quote = False
+    i = 0
+
+    while i < len(line):
+        ch = line[i]
+
+        if ch == '\\' and (in_single_quote or in_double_quote) and i + 1 < len(line):
+            # Skip the escaped character inside a quoted string
+            i += 2
+            continue
+
+        if ch == '"' and not in_single_quote:
+            in_double_quote = not in_double_quote
+        elif ch == "'" and not in_double_quote:
+            in_single_quote = not in_single_quote
+        elif ch == '#' and not in_single_quote and not in_double_quote:
+            return i
+
+        i += 1
+
+    return None
 
 
 def _check_heredoc_state(line: str, current_in_heredoc: bool, current_terminator: Optional[str]) -> Dict[str, Any]:
@@ -242,10 +279,9 @@ def _remove_comments_for_parsing(content: str) -> str:
     cleaned_lines = []
     
     for line in lines:
-        # Find comment start position
-        comment_pos = line.find('#')
-        if comment_pos != -1:
-            # Keep everything before the comment
+        comment_pos = _find_comment_start(line)
+        if comment_pos is not None:
+            # Keep everything before the comment marker
             cleaned_lines.append(line[:comment_pos].rstrip())
         else:
             cleaned_lines.append(line)
@@ -271,17 +307,16 @@ def _get_comment_statistics(content: str) -> Dict[str, Any]:
     violations = 0
     
     for line in lines:
-        if '#' in line:
+        comment_pos = _find_comment_start(line)
+        if comment_pos is not None:
             comment_lines += 1
-            comment_match = re.search(r'#(.*)$', line)
-            if comment_match:
-                comment_text = comment_match.group(1)
-                if not comment_text:
-                    empty_comments += 1
-                elif comment_text.startswith(' ') and not comment_text.startswith('  '):
-                    properly_formatted += 1
-                else:
-                    violations += 1
+            comment_text = line[comment_pos + 1:]
+            if not comment_text:
+                empty_comments += 1
+            elif comment_text.startswith(' ') and not comment_text.startswith('  '):
+                properly_formatted += 1
+            else:
+                violations += 1
     
     return {
         "total_lines": total_lines,
@@ -335,7 +370,8 @@ def get_rule_description() -> Dict[str, Any]:
             "Exactly one space must follow the '#' character",
             "Empty comments (only '#') are allowed",
             "Multiple spaces or tabs after '#' are violations",
-            "Comments within string literals are not validated",
+            "'#' inside single-quoted or double-quoted strings is not treated as a comment",
+            "Inline end-of-line comments (any '#' outside quotes) are validated",
             "Comments within HCL heredoc blocks (<<EOT, <<EOF, etc.) are excluded from validation"
         ],
         "examples": {

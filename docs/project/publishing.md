@@ -108,7 +108,7 @@ git push origin v1
   after last non-empty line)
 
 ### DC (Documentation/Comments) Rules
-- DC.001: Comment format check
+- DC.001: Comment format check (`#` + one space; ignore `#` inside quoted strings; exclude heredoc)
 
 ### IO (Input/Output) Rules
 - IO.001: Variable definition file location check

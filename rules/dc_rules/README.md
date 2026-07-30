@@ -20,19 +20,23 @@ dc_rules/
 
 | Rule ID | Name | Description | Module |
 |---------|------|-------------|---------|
-| DC.001 | Comment format check | Validates comment formatting standards | `rule_001.py` |
+| DC.001 | Comment format check | Validates comment formatting; ignores `#` inside quotes; excludes heredoc | `rule_001.py` |
 
 
 ## 📋 Rule Details
 
 ### DC.001 - Comment Format Check
 
-**Purpose**: Ensures consistent comment formatting across Terraform files. Comments within HCL heredoc blocks (<<EOT, <<EOF, etc.) are excluded from validation.
+**Purpose**: Ensures consistent comment formatting across Terraform files. `#` characters inside single-quoted or
+double-quoted string literals are ignored. Inline end-of-line comments outside quotes are validated. Comments within
+HCL heredoc blocks (<<EOT, <<EOF, etc.) are excluded from validation.
 
 **Validation Criteria**:
 - Comments must start with `#` character
 - Exactly one space must follow the `#` character
 - Empty comments (only `#`) are allowed
+- `#` inside single-quoted or double-quoted strings is not treated as a comment
+- Inline end-of-line comments (any `#` outside quotes) are validated
 - Comments within HCL heredoc blocks are excluded from validation
 
 **Examples**:
@@ -42,6 +46,9 @@ dc_rules/
 # This is a properly formatted comment
 # TODO: Add validation logic
 #
+resource "random_password" "test" {
+  override_special = "~!@#%^*-_=+?"  # '#' inside quotes is ignored
+}
 ```
 
 ❌ **Invalid**:
@@ -49,6 +56,7 @@ dc_rules/
 #This comment has no space after #
 #  This comment has multiple spaces after #
 #	This comment has a tab after #
+location = "cn-north-1"  #No space in inline comment
 ```
 
 **HCL Heredoc Example (comments inside are excluded from validation)**:

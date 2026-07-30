@@ -194,11 +194,7 @@ output:
 - **IO.009**: Variable usage check (unused + undeclared references, including inside `variables.tf`)
 
 ### DC Rules (Documentation/Comments)
-- **DC.001**: Resource documentation
-- **DC.002**: Variable documentation
-- **DC.003**: Module documentation
-- **DC.004**: Comment quality check
-- **DC.005**: README validation
+- **DC.001**: Comment formatting standards (`#` + one space; ignore `#` inside quotes; exclude heredoc)
 
 ### SC Rules (Security Code)
 - **SC.001**: Security best practices
