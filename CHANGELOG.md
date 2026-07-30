@@ -5,6 +5,118 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-07-30
+
+### ✨ New Features
+
+#### 📥 IO.010 - Variable Validation Block Structural Check
+
+**Validates `validation` block structure inside variable definitions**
+
+- Requires `condition` and a non-trivial `error_message` when a `validation` block is present
+- Detects empty validation blocks and incomplete validation configurations
+- Added acceptance fixtures under `acceptances/good/io010/` and `acceptances/bad/io010/`
+
+#### 📁 IO.013 - Provider File Location Check
+
+**Requires `provider` blocks to be defined in `providers.tf`**
+
+- Flags provider definitions placed in `main.tf` or other non-`providers.tf` files
+- Allows aliased providers and meta-argument usage when declared in `providers.tf`
+- Added acceptance fixtures under `acceptances/good/io013/` and `acceptances/bad/io013/`
+- Locked related IO.006–IO.008 acceptance coverage
+
+#### 🔐 SC.006 - Hardcoded Credential Literal Check
+
+**Flags hardcoded credential string literals in `.tf` files**
+
+- Detects literal values assigned to known credential attributes (e.g. `access_key`, `secret_key`, `token`)
+- Allows variable references and placeholder values such as `CHANGEME`
+- Does not scan `*.tfvars` or heredoc bodies
+
+#### 🛡️ SC.007 - Sensitive Variable Non-Empty Default Check
+
+**Sensitive-named variables must not declare a non-empty, non-placeholder string `default`**
+
+- Complements SC.005 with default-value hygiene
+- Empty/`null` defaults and allowlisted names are permitted
+- Added acceptance fixtures under `acceptances/good/sc007/` and `acceptances/bad/sc007/`
+
+#### 🔍 IO.009 - Bidirectional Variable Usage Check
+
+**Detects both unused variable definitions and undeclared `var.*` references**
+
+- Counts references inside `variables.tf` (including `validation` blocks)
+- Supports bidirectional unused / undeclared reporting
+- Added acceptance fixtures for unused, undeclared, and validation cross-reference cases
+
+### 🔧 Rule Fixes & Improvements
+
+#### 📚 DC.001 - Comment Format Check
+
+**Ignore `#` characters inside quoted string literals**
+
+- **Issue**: DC.001 treated every `#` on a line as a comment marker, so values such as `override_special = "~!@#%^*-_=+?"` were falsely flagged for missing space after `#`
+- **Solution**:
+  - Introduced quote-aware comment detection (`_find_comment_start`)
+  - Ignore `#` inside single-quoted or double-quoted strings (including escaped quotes)
+  - Continue validating real comments, including inline end-of-line comments outside quotes
+  - Keep existing HCL heredoc exclusion behavior
+- **Impact**: Eliminates false positives for `#` inside string values while preserving comment spacing enforcement
+- Added `.tf` acceptance fixtures under `acceptances/good/dc001/` and `acceptances/bad/dc001/`
+
+#### 📥 IO.003 - Required Variable Declaration Check
+
+**Honor `*.auto.tfvars` when checking required variable declarations**
+
+- Required variables declared via `*.auto.tfvars` (alone or split with `terraform.tfvars`) now pass
+- Clarified rule wording and documentation
+- Locked IO.001 / IO.002 acceptance coverage
+
+#### 🔒 SC.001 - Unsafe Array Index Access Detection
+
+**Narrowed false positives for safe access patterns**
+
+- Avoids flagging safe patterns such as `try(...)`, `element(...)`, and related guarded access forms
+- Added acceptance fixtures under `acceptances/good/sc001/` and `acceptances/bad/sc001/`
+
+#### 🔒 SC.004 - HuaweiCloud Provider Version Validity Check
+
+**Deep validation is now opt-in**
+
+- Deep provider version probing is skipped by default to reduce CI cost and flaky network dependency
+- Existing configurations continue to work without enabling the deep check
+
+#### 🔐 SC.005 - Sensitive Variable Declaration Check
+
+**Expanded sensitive-name matching and reduced false positives**
+
+- Shared sensitive-name patterns via `rules/common/sensitive_patterns.py`
+- Expanded exact / segment / contains matching with allowlist support
+- Fixed phone-related false positives (e.g. `microphone`, `speakerphone`)
+- Added unit coverage and acceptance fixtures under `acceptances/good/sc005/` and `acceptances/bad/sc005/`
+
+#### 📏 ST.009 - Variable Definition Order Check
+
+**Expanded usage scanning and multi-file order validation**
+
+- Improved order matching across multiple Terraform files
+- Fixed design issues around usage scan scope and disable directives
+- Added acceptance fixtures under `acceptances/good/st009/` and `acceptances/bad/st009/`
+
+#### 🧩 Shared Rule Infrastructure
+
+- Added `rules/common/` helpers for sensitive patterns, provider-variable exclusions, and unified rule metadata
+- Resolved follow-up design regressions affecting ST.009, SC.003, IO.004 / IO.005, and provider exclusions
+- Aligned rule docstrings / README descriptions with actual behavior
+
+### 📚 Documentation & Examples
+
+- Updated DC / IO / SC / ST rule docs for new and changed rules
+- Corrected `docs/guides/quickstart.md` DC rule listing (removed inaccurate DC.002–DC.005 entries)
+- Fixed `examples/good-examples` samples so upgrade / lint smoke validation passes
+- Expanded acceptance coverage across IO, SC, ST, and DC rule packs
+
 ## [3.1.0] - 2026-07-09
 
 ### ✨ New Features
