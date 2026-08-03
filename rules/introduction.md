@@ -519,6 +519,30 @@ resource "huaweicloud_compute_instance" "test" {
 
 ---
 
+### ST.008 - Meta-parameter Spacing Check
+
+**Rule Description:** Validates blank-line spacing around resource/data meta-parameters (`count`, `for_each`,
+`provider`, `lifecycle`, `depends_on`). Complements ST.003 (which owns `=` spacing/alignment for those parameters).
+
+**Validation Criteria:**
+- Exactly 1 blank line between different meta-parameters
+- Exactly 1 blank line between a meta-parameter and following non-meta parameters (when no other meta sits between)
+- No blank lines before the first meta-parameter in a block
+- `for_each` inside `dynamic` blocks is not treated as a resource-level meta-parameter for this rule
+
+**Purpose:**
+- Keep meta-parameters visually grouped and easy to scan
+- Avoid ambiguous adjacency between lifecycle/provider meta and normal attributes
+
+**Best Practices:**
+- Place meta-parameters near the top of the resource/data block
+- Keep one blank line between the meta group and ordinary attributes
+
+**Cross-references**: Works with [ST.003](#st003---parameter-alignment-format-convention),
+                      [ST.007](#st007---parameter-block-spacing-check)
+
+---
+
 ### ST.009 - Variable Definition Order Convention
 
 **Rule Description:** Variable definition order in `variables.tf` must match first-use order across sibling `*.tf`
@@ -851,6 +875,37 @@ resource "huaweicloud_vpc" "test" {
 - Maintain consistent file formatting across all Terraform files in the project
 
 **Cross-references**: Works with [ST.011](#st011---trailing-whitespace-check)
+
+---
+
+### ST.013 - Directory Naming Convention Check
+
+**Rule Description:** Directory names must contain only letters, numbers, and hyphens, and must start and end with
+letters.
+
+**Purpose:**
+- Enforce consistent directory naming across modules
+- Improve cross-platform path compatibility
+- Keep example/module trees easy to navigate
+
+**Best Practices:**
+- Prefer lowercase hyphenated names (e.g., `compute-instance`, `obs-bucket`)
+- Avoid underscores, spaces, and leading/trailing hyphens or digits
+
+---
+
+### ST.014 - File Naming Convention Check
+
+**Rule Description:** File names must contain only letters, numbers, and underscores, and must start and end with
+letters. Terraform state files and `*.log` files are excluded.
+
+**Purpose:**
+- Enforce consistent file naming
+- Improve project organization and tooling compatibility
+
+**Best Practices:**
+- Use snake_case for custom `.tf` helpers when not using standard names (`main.tf`, `variables.tf`, …)
+- Keep standard Terraform filenames unchanged
 
 ---
 
@@ -1578,6 +1633,56 @@ ERROR: variables.tf (7): [IO.009] Variable 'min_count' is referenced but not dec
 
 ---
 
+### IO.010 - Variable Validation Block Check
+
+**Rule Description:** When a variable defines one or more `validation {}` blocks, each block must include both
+`condition` and `error_message`. Variables without validation blocks are not checked.
+
+**Purpose:**
+- Ensure validation failures are actionable
+- Keep variable constraints documented at the definition site
+
+**Error Example:**
+
+```hcl
+# ❌ Error: validation missing error_message
+variable "vpc_name" {
+  type = string
+  validation {
+    condition = can(regex("^[a-zA-Z0-9_-]+$", var.vpc_name))
+  }
+}
+```
+
+**Correct Example:**
+
+```hcl
+variable "vpc_name" {
+  type = string
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9_-]+$", var.vpc_name))
+    error_message = "VPC name must contain only alphanumeric characters, underscores, and hyphens."
+  }
+}
+```
+
+---
+
+### IO.013 - Provider Definition File Location Check
+
+**Rule Description:** Top-level `provider {}` configuration blocks must be defined in `providers.tf`, not in other
+`.tf` files. Does not flag resource/module `provider` meta-arguments, and does not police `terraform {}` /
+`required_providers` (see SC.002).
+
+**Purpose:**
+- Keep provider configuration colocated with version constraints
+- Mirror IO.001/IO.002 file-organization conventions for providers
+
+**Best Practices:**
+- Put `provider "huaweicloud" { ... }` in `providers.tf` next to `terraform { required_providers ... }`
+
+---
+
 ## SC (Security Code) Rule Details
 
 ### SC.001 - Array Index Access Safety Check
@@ -1690,6 +1795,67 @@ resource "huaweicloud_compute_instance" "test" {
   )
 }
 ```
+
+---
+
+### SC.002 - Terraform Required Version Declaration Check
+
+**Rule Description:** `providers.tf` must contain a `terraform` block with a `required_version` declaration.
+
+**Purpose:**
+- Pin Terraform language compatibility for modules
+- Make version expectations explicit for consumers
+
+---
+
+### SC.003 - Terraform Version Compatibility Check
+
+**Rule Description:** Declared `required_version` must be compatible with language features used in the configuration
+(for example newer type constraints or expressions that require a higher Terraform version).
+
+**Purpose:**
+- Prevent modules from declaring versions that cannot parse/run the code
+- Surface version gaps early in CI
+
+---
+
+### SC.004 - HuaweiCloud Provider Version Validity Check
+
+**Rule Description:** Deep opt-in check (`--deep` / `HCBP_DEEP_CHECKS`) that probes HuaweiCloud provider version
+constraints for validity. Skipped by default.
+
+**Purpose:**
+- Catch invalid or outdated provider version constraints before consumers hit install failures
+
+---
+
+### SC.005 - Sensitive Variable Declaration Check
+
+**Rule Description:** Variables whose names indicate sensitive data must declare `sensitive = true`.
+
+**Purpose:**
+- Reduce accidental exposure of secrets in plans and logs
+- Align naming intent with Terraform sensitivity marking
+
+---
+
+### SC.006 - Hardcoded Credential Literal Check
+
+**Rule Description:** Flags credential-related attributes that embed string literal secrets in `.tf` files.
+
+**Purpose:**
+- Discourage committing credentials in source
+- Push secrets toward variables, env, or secret stores
+
+---
+
+### SC.007 - Sensitive Variable Non-Empty Default Check
+
+**Rule Description:** Sensitive-named variables must not use dangerous non-empty default values.
+
+**Purpose:**
+- Prevent shipping real or placeholder secrets as defaults
+- Keep sensitive inputs explicitly provided by callers
 
 ---
 

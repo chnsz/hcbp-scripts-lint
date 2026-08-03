@@ -177,8 +177,8 @@ output:
 - **ST.008**: Meta-parameter spacing check
 - **ST.009**: Variable definition order check
 - **ST.010**: Resource, data source, variable, and output quote check
-- **ST.011**: Comment formatting standards
-- **ST.012**: Indentation and spacing
+- **ST.011**: Trailing whitespace check
+- **ST.012**: File header and footer whitespace check
 - **ST.013**: Directory naming convention check
 - **ST.014**: File naming convention check
 
@@ -192,15 +192,17 @@ output:
 - **IO.007**: Output description field check
 - **IO.008**: Variable type definition check
 - **IO.009**: Variable usage check (unused + undeclared references, including inside `variables.tf`)
+- **IO.010**: Variable validation block check (`condition` + `error_message`)
+- **IO.013**: Provider definition file location check (`provider {}` in `providers.tf`)
 
 ### DC Rules (Documentation/Comments)
 - **DC.001**: Comment formatting standards (`#` + one space; ignore `#` inside quotes; exclude heredoc)
 
 ### SC Rules (Security Code)
-- **SC.001**: Security best practices
-- **SC.002**: Provider version constraints
-- **SC.003**: Terraform version compatibility
-- **SC.004**: Provider version validation
+- **SC.001**: Array index access safety check
+- **SC.002**: Terraform required version declaration check
+- **SC.003**: Terraform version compatibility check
+- **SC.004**: HuaweiCloud provider version validity check
 - **SC.005**: Sensitive variable declaration check
 - **SC.006**: Hardcoded credential literal check
 - **SC.007**: Sensitive variable non-empty default check

@@ -258,6 +258,8 @@ For more information, please refer to the [ST rules documentation](docs/rules/st
 - **IO.007**: Output description requirement
 - **IO.008**: Variable type definition requirement
 - **IO.009**: Variable usage check (unused + undeclared `var.*`, including refs in `variables.tf`)
+- **IO.010**: Variable validation block check (`condition` + `error_message`)
+- **IO.013**: Provider definition file location check (`provider {}` in `providers.tf`)
 
 For more information, please refer to the [IO rules documentation](docs/rules/io_rules.md).
 
