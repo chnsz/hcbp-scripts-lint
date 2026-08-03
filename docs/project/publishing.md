@@ -87,10 +87,10 @@ git push origin v1
 - ✅ Support for multiple Terraform file types (.tf, .tfvars)
 
 ### Supported Rules
-- **ST (Style/Format)**: ST.001, ST.002, ST.003, ST.004, ST.005, ST.006, ST.007, ST.009, ST.010, ST.011
+- **ST (Style/Format)**: ST.001–ST.014
 - **DC (Documentation/Comments)**: DC.001
-- **IO (Input/Output)**: IO.001, IO.002, IO.003, IO.004, IO.005, IO.006, IO.007, IO.008, IO.009
-- **SC (Security Code)**: SC.001
+- **IO (Input/Output)**: IO.001–IO.010, IO.013
+- **SC (Security Code)**: SC.001–SC.007
 
 ### ST (Style/Format) Rules
 - ST.001: Resource and data source naming convention check
@@ -100,12 +100,15 @@ git push origin v1
 - ST.005: Indentation level check (2 spaces per level, excludes heredoc blocks in .tfvars files)
 - ST.006: Resource and data source spacing check (exactly 1 empty line between blocks)
 - ST.007: Parameter block spacing check
+- ST.008: Meta-parameter spacing check (count, for_each, provider, lifecycle, depends_on)
 - ST.009: Variable definition order check (definition order in `variables.tf` must match first-use order across sibling
   `*.tf` files, excluding `variables.tf`)
 - ST.010: Resource, data source, variable, and output quote check (double quotes around names)
 - ST.011: Trailing whitespace check (no trailing spaces or tabs at line ends)
 - ST.012: File header and footer whitespace check (no empty lines before first non-empty line, exactly one empty line
   after last non-empty line)
+- ST.013: Directory naming convention check (letters, numbers, hyphens; start/end with letters)
+- ST.014: File naming convention check (letters, numbers, underscores; start/end with letters)
 
 ### DC (Documentation/Comments) Rules
 - DC.001: Comment format check (`#` + one space; ignore `#` inside quoted strings; exclude heredoc)
@@ -120,6 +123,8 @@ git push origin v1
 - IO.007: Output description check (all outputs must have non-empty descriptions)
 - IO.008: Variable type check (all variables must have type field defined)
 - IO.009: Variable usage check (unused definitions + undeclared `var.*`, including refs in `variables.tf`)
+- IO.010: Variable validation block check (validation blocks require `condition` and `error_message`)
+- IO.013: Provider definition file location check (`provider {}` blocks must be in `providers.tf`)
 
 ### SC (Security Code) Rules
 - SC.001: Array index access safety check (validates that array index access uses try() function to prevent index out of
@@ -130,6 +135,9 @@ git push origin v1
   used)
 - SC.004: HuaweiCloud provider version validity check (validates huaweicloud provider version constraints by testing
   with current and previous versions)
+- SC.005: Sensitive variable declaration check (sensitive-named variables must declare `sensitive = true`)
+- SC.006: Hardcoded credential literal check (credential attributes must not embed string secrets in `.tf` files)
+- SC.007: Sensitive variable non-empty default check (sensitive-named variables must not use dangerous non-empty defaults)
 
 ### Usage
 ``yaml
