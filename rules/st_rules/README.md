@@ -76,7 +76,8 @@ the longest parameter name.
 - Equals signs must be aligned within the same code block
 - Aligned equals signs should maintain exactly one space from the longest parameter name in the code block
 - Exactly one space after the equals sign and parameter value
-- Supports resource, data source, provider, locals, terraform, and variable blocks
+- Supports resource, data source, ephemeral, module, provider, locals, terraform, variable, output,
+  import, moved, and check blocks (including single-line blocks that contain assignments inside `{}`)
 - Supports terraform.tfvars files for variable assignment alignment checking
 - Intelligently handles nested object structures by grouping parameters within objects
 - Uses expandtabs(2) to properly handle tab characters in indentation calculation
@@ -98,17 +99,25 @@ the longest parameter name.
 - Sections are split on empty lines (true blank lines, not comment lines)
 - Empty lines always split sections, regardless of brace level or nesting
 - Comment lines are ignored for sectioning (do not split sections)
-- Object boundaries ({ and }) create new sections
-- When entering an object (parameter = {), the parameter declaration starts a new section
+- Object boundaries ({ and }) create new sections for nested content
+- Sibling `param = {` declarations stay in the current section so they align with peer parameters; nested
+  fields inside the object form their own section
 - For terraform.tfvars files, groups consecutive variable assignments based on actual blank lines
 - Nested structures maintain their own alignment groups within objects and arrays
 
 **Special Cases**:
-- Lines containing tab characters (ST.004 issues) are excluded from alignment calculations
-- Lines with incorrect indentation (ST.005 issues) are excluded from alignment calculations
-- Meta-parameters (ST.008 issues: count, for_each, provider, lifecycle, depends_on) are excluded from alignment
-  calculations
-- If a line has ST.004, ST.005, or ST.008 issues, ST.003 alignment errors are not reported for that line
+- Lines with tabs (ST.004) or odd indentation (ST.005-class) are skipped and do not set the equals baseline
+- In `resource` / `data` / `module` / `ephemeral` blocks, meta-parameters (count, for_each, provider, lifecycle,
+  depends_on) are excluded from column-alignment calculations, but still require exactly one space before `=`
+- Attributes merely named `count` in variables/locals/object types are not treated as meta-parameters
+- `for_each` inside `dynamic` blocks (including same-line `dynamic "x" { for_each = ... }`) is treated as a normal
+  parameter; top-level `for_each` after a closed dynamic block is still a meta-parameter (brace-depth tracked)
+- Same-line multi-assignment is checked for `=` spacing only (no column alignment)
+- Heredoc bodies (`<<EOF` / `<<eot`, etc.) are ignored until the matching terminator
+- Column alignment uses max(len(name) + quote_chars) so mixed quoted/unquoted names do not add a global +2
+- ST.003 (compact `=` spacing) and ST.008 (blank lines around meta-parameters) are complementary and may both report
+- .tfvars may keep consistent extra padding when a majority already share an equals column; single-parameter
+  groups still require exactly one space before `=`
 
 **Examples**:
 

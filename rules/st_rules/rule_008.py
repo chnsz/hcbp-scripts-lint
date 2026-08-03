@@ -46,6 +46,8 @@ License: Apache 2.0
 import re
 from typing import Callable, List, Tuple, Dict, Optional
 
+from rules.st_rules.rule_003 import _is_inside_dynamic_block
+
 
 def check_st008_count_depends_on_spacing(file_path: str, content: str, log_error_func: Callable[[str, str, str, Optional[int]], None]) -> None:
     """
@@ -177,26 +179,17 @@ def _extract_parameters_from_resource(resource_lines: List[str], resource_start_
             meta_match = re.match(f'{meta_param}\\s*=', line)
             if meta_match:
                 # Special case: for_each inside dynamic blocks should not be treated as meta-parameter
-                if meta_param == 'for_each':
-                    # Check if this for_each is inside a dynamic block
-                    is_inside_dynamic = False
-                    for j in range(i):
-                        prev_line = resource_lines[j].strip()
-                        if re.match(r'dynamic\s+"[^"]+"\s*\{', prev_line):
-                            is_inside_dynamic = True
-                            break
-                    
-                    if is_inside_dynamic:
-                        # Still add it as a parameter but mark it as dynamic-internal
-                        param_line = resource_start_line + i
-                        parameters.append({
-                            'type': 'dynamic_internal',
-                            'name': meta_param,
-                            'start_line': param_line,
-                            'end_line': param_line
-                        })
-                        meta_param_found = True
-                        break
+                if meta_param == 'for_each' and _is_inside_dynamic_block(i, resource_lines):
+                    # Still add it as a parameter but mark it as dynamic-internal
+                    param_line = resource_start_line + i
+                    parameters.append({
+                        'type': 'dynamic_internal',
+                        'name': meta_param,
+                        'start_line': param_line,
+                        'end_line': param_line
+                    })
+                    meta_param_found = True
+                    break
                 
                 param_line = resource_start_line + i
                 parameters.append({

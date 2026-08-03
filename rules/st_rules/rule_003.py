@@ -26,10 +26,20 @@ Code Block Sectioning Rules:
 - Parameters within the same section must align with each other
 
 Special Cases:
-- Lines containing tab characters are excluded from alignment calculations
-- If all lines in a group contain tabs, no alignment errors are reported
-- Parameters with quotes (e.g., "Environment") are handled correctly
+- Lines containing tab characters or odd indentation are skipped and do not set the equals baseline
+- Supports resource, data, ephemeral, module, provider, locals, terraform, variable, output,
+  import, moved, and check blocks (including single-line blocks with content inside `{}`)
+- In resource/data/module/ephemeral blocks, meta-parameters (count, for_each, provider, depends_on, lifecycle)
+  are excluded from column-alignment calculations, but still require exactly one space before '='
+- Attributes named count in variables/locals/object types are not treated as meta-parameters
+- for_each inside dynamic blocks (including same-line `dynamic "x" { for_each = ... }`) is treated as a
+  normal parameter; after a closed dynamic block, top-level for_each is again a meta-parameter
+- Same-line multi-assignment uses spacing checks only (no column alignment)
+- Quote-aware alignment uses max(len(name) + quote_chars) per parameter
 - Nested objects maintain their own alignment groups
+- Sibling `param = {` declarations stay in the current section; nested fields form new sections
+- .tfvars may keep consistent extra padding when a majority already share an equals column; single-parameter
+  groups still require exactly one space before '='
 
 Examples:
     Valid declarations:
@@ -182,7 +192,10 @@ def _remove_comments_for_parsing(content: str) -> str:
 
 def _extract_code_blocks(content: str) -> List[Tuple[str, int, List[str]]]:
     """
-    Extract data source and resource code blocks.
+    Extract Terraform code blocks that contain parameter assignments.
+
+    Supported blocks: data, resource, ephemeral, module, provider, locals, terraform,
+    variable, output, import, moved, and check.
 
     Args:
         content (str): The cleaned Terraform content
@@ -196,30 +209,38 @@ def _extract_code_blocks(content: str) -> List[Tuple[str, int, List[str]]]:
     while i < len(lines):
         line = lines[i].strip()
         # Support quoted, single-quoted, and unquoted syntax
-        # Quoted: data "type" "name" { ... } or resource "type" "name" { ... } or provider "type" { ... } or locals { ... }
-        # Single-quoted: data 'type' 'name' { ... } or resource 'type' 'name' { ... } or provider 'type' { ... } or locals { ... }
-        # Unquoted: data type name { ... } or resource type name { ... } or provider type { ... } or locals { ... }
         data_match = re.match(r'data\s+(?:"([^"]+)"|\'([^\']+)\'|([a-zA-Z_][a-zA-Z0-9_]*))\s+(?:"([^"]+)"|\'([^\']+)\'|([a-zA-Z_][a-zA-Z0-9_]*))\s*\{', line)
         resource_match = re.match(r'resource\s+(?:"([^"]+)"|\'([^\']+)\'|([a-zA-Z_][a-zA-Z0-9_]*))\s+(?:"([^"]+)"|\'([^\']+)\'|([a-zA-Z_][a-zA-Z0-9_]*))\s*\{', line)
+        ephemeral_match = re.match(r'ephemeral\s+(?:"([^"]+)"|\'([^\']+)\'|([a-zA-Z_][a-zA-Z0-9_]*))\s+(?:"([^"]+)"|\'([^\']+)\'|([a-zA-Z_][a-zA-Z0-9_]*))\s*\{', line)
+        module_match = re.match(r'module\s+(?:"([^"]+)"|\'([^\']+)\'|([a-zA-Z_][a-zA-Z0-9_]*))\s*\{', line)
         provider_match = re.match(r'provider\s+(?:"([^"]+)"|\'([^\']+)\'|([a-zA-Z_][a-zA-Z0-9_]*))\s*\{', line)
         locals_match = re.match(r'locals\s*\{', line)
         terraform_match = re.match(r'terraform\s*\{', line)
         variable_match = re.match(r'variable\s+(?:"([^"]+)"|\'([^\']+)\'|([a-zA-Z_][a-zA-Z0-9_]*))\s*\{', line)
         output_match = re.match(r'output\s+(?:"([^"]+)"|\'([^\']+)\'|([a-zA-Z_][a-zA-Z0-9_]*))\s*\{', line)
+        check_match = re.match(r'check\s+(?:"([^"]+)"|\'([^\']+)\'|([a-zA-Z_][a-zA-Z0-9_]*))\s*\{', line)
+        import_match = re.match(r'import\s*\{', line)
+        moved_match = re.match(r'moved\s*\{', line)
 
-        if data_match or resource_match or provider_match or locals_match or terraform_match or variable_match or output_match:
+        if (data_match or resource_match or ephemeral_match or module_match or provider_match
+                or locals_match or terraform_match or variable_match or output_match
+                or check_match or import_match or moved_match):
             if data_match:
-                # Get data type and name from quoted, single-quoted, or unquoted groups
                 data_type = data_match.group(1) if data_match.group(1) else (data_match.group(2) if data_match.group(2) else data_match.group(3))
                 data_name = data_match.group(4) if data_match.group(4) else (data_match.group(5) if data_match.group(5) else data_match.group(6))
                 block_type = f"data.{data_type}.{data_name}"
             elif resource_match:
-                # Get resource type and name from quoted, single-quoted, or unquoted groups
                 resource_type = resource_match.group(1) if resource_match.group(1) else (resource_match.group(2) if resource_match.group(2) else resource_match.group(3))
                 resource_name = resource_match.group(4) if resource_match.group(4) else (resource_match.group(5) if resource_match.group(5) else resource_match.group(6))
                 block_type = f"resource.{resource_type}.{resource_name}"
+            elif ephemeral_match:
+                ephemeral_type = ephemeral_match.group(1) if ephemeral_match.group(1) else (ephemeral_match.group(2) if ephemeral_match.group(2) else ephemeral_match.group(3))
+                ephemeral_name = ephemeral_match.group(4) if ephemeral_match.group(4) else (ephemeral_match.group(5) if ephemeral_match.group(5) else ephemeral_match.group(6))
+                block_type = f"ephemeral.{ephemeral_type}.{ephemeral_name}"
+            elif module_match:
+                module_name = module_match.group(1) if module_match.group(1) else (module_match.group(2) if module_match.group(2) else module_match.group(3))
+                block_type = f"module.{module_name}"
             elif provider_match:
-                # Get provider type from quoted, single-quoted, or unquoted groups
                 provider_type = provider_match.group(1) if provider_match.group(1) else (provider_match.group(2) if provider_match.group(2) else provider_match.group(3))
                 block_type = f"provider.{provider_type}"
             elif locals_match:
@@ -227,24 +248,38 @@ def _extract_code_blocks(content: str) -> List[Tuple[str, int, List[str]]]:
             elif terraform_match:
                 block_type = "terraform"
             elif variable_match:
-                # Get variable name from quoted, single-quoted, or unquoted groups
                 variable_name = variable_match.group(1) if variable_match.group(1) else (variable_match.group(2) if variable_match.group(2) else variable_match.group(3))
                 block_type = f"variable.{variable_name}"
-            else:  # output_match
-                # Get output name from quoted, single-quoted, or unquoted groups
+            elif output_match:
                 output_name = output_match.group(1) if output_match.group(1) else (output_match.group(2) if output_match.group(2) else output_match.group(3))
                 block_type = f"output.{output_name}"
-                
-            start_line = i + 1
+            elif check_match:
+                check_name = check_match.group(1) if check_match.group(1) else (check_match.group(2) if check_match.group(2) else check_match.group(3))
+                block_type = f"check.{check_name}"
+            elif import_match:
+                block_type = "import"
+            else:  # moved_match
+                block_type = "moved"
+
             block_lines = []
+            # start_line is chosen so actual_line = start_line + relative_idx + 1
+            # Multi-line: content starts on the line after the declaration.
+            # Single-line: content lives on the declaration line itself.
+            start_line = i + 1
             brace_count = 1
             i += 1
 
-            # Check if the opening brace is on the same line as the declaration
+            # Opening and closing brace on the declaration line
             if '{' in line and '}' in line:
-                # Single line block like: data "type" "name" { }
-                # No additional lines to process
-                pass
+                first_brace = line.find('{')
+                last_brace = line.rfind('}')
+                if first_brace != -1 and last_brace > first_brace:
+                    inner = line[first_brace + 1:last_brace].strip()
+                    if inner:
+                        # Strip so synthetic content is not treated as odd-indent (ST.005 skip).
+                        block_lines = [inner]
+                        # Content is on the declaration line (1-based i was already advanced).
+                        start_line = i - 1  # 0-based index of declaration => actual = start_line + 0 + 1
             else:
                 # Multi-line block, process until we find the closing brace
                 while i < len(lines) and brace_count > 0:
@@ -319,10 +354,10 @@ def _split_into_code_sections(block_lines: List[str]) -> List[List[Tuple[str, in
         
         # Check for heredoc start pattern (<<EOF, <<-EOF, etc.)
         # Match <<EOF or <<-EOF at the end of a line
-        heredoc_match = re.search(r'<<-?([A-Z]+)\s*$', line)
-        if heredoc_match:
+        heredoc_terminator_match = _match_heredoc_start(line)
+        if heredoc_terminator_match:
             in_heredoc = True
-            heredoc_terminator = heredoc_match.group(1)
+            heredoc_terminator = heredoc_terminator_match
             # Continue to process the heredoc start line if it contains '=' or boundary markers
         
         if stripped_line == '':
@@ -1350,13 +1385,23 @@ def _split_into_code_sections(block_lines: List[str]) -> List[List[Tuple[str, in
     return merged_sections
 
 
-def _find_assignment_equals_pos(line: str) -> int:
-    """
-    Find the position of the assignment '=' operator in a line.
+_HEREDOC_START_RE = re.compile(r'<<-?([A-Za-z_][A-Za-z0-9_]*)\s*$')
 
-    Comparison operators (==, !=, <=, >=) are ignored so expression content
-    is not misidentified as parameter assignments.
+
+def _match_heredoc_start(line: str) -> Optional[str]:
+    """Return heredoc terminator if line opens a heredoc, else None."""
+    match = _HEREDOC_START_RE.search(line)
+    return match.group(1) if match else None
+
+
+def _find_all_assignment_equals_positions(line: str) -> List[int]:
     """
+    Find all assignment '=' operator positions in a line.
+
+    Comparison / fat-arrow operators (==, !=, <=, >=, =>) are ignored so
+    expression content is not misidentified as parameter assignments.
+    """
+    positions: List[int] = []
     in_quotes = False
     quote_char = None
     i = 0
@@ -1372,15 +1417,22 @@ def _find_assignment_equals_pos(line: str) -> int:
         elif not in_quotes and char == '=':
             prev_char = line[i - 1] if i > 0 else ''
             next_char = line[i + 1] if i + 1 < len(line) else ''
-            if next_char == '=':
+            # Skip comparison / fat-arrow operators: ==, !=, <=, >=, =>
+            if next_char == '=' or next_char == '>':
                 i += 2
                 continue
             if prev_char in '!<>':
                 i += 1
                 continue
-            return i
+            positions.append(i)
         i += 1
-    return -1
+    return positions
+
+
+def _find_assignment_equals_pos(line: str) -> int:
+    """Find the first assignment '=' operator in a line, or -1."""
+    positions = _find_all_assignment_equals_positions(line)
+    return positions[0] if positions else -1
 
 
 def _has_assignment_equals(line: str) -> bool:
@@ -1398,6 +1450,25 @@ def _get_before_assignment_equals(line: str) -> str:
     """Return the text before the assignment '=' operator."""
     pos = _find_assignment_equals_pos(line)
     return line[:pos] if pos != -1 else ''
+
+
+def _extract_assignment_param_name(before_equals: str) -> Optional[str]:
+    """
+    Extract the parameter name from text before an assignment '='.
+
+    Handles normal `name =` lines and trailing assignments after a block open,
+    e.g. `dynamic "tags" { for_each = ... }`.
+    """
+    simple = re.match(r'^\s*(["\']?)([^"\'=\s]+)\1\s*$', before_equals)
+    if simple:
+        return simple.group(2)
+
+    # Same-line nested assignment: ... { param_name <spaces>
+    trailing = re.search(r'\{\s*(["\']?)([A-Za-z_][A-Za-z0-9_]*)\1\s*$', before_equals)
+    if trailing:
+        return trailing.group(2)
+
+    return None
 
 
 def _check_parameter_alignment_in_section(
@@ -1493,15 +1564,15 @@ def _check_parameter_alignment_in_section(
         
         # Check for heredoc start pattern (<<EOF, <<-EOF, etc.)
         # Match <<EOF or <<-EOF at the end of a line
-        heredoc_match = re.search(r'<<-?([A-Z]+)\s*$', line)
-        if heredoc_match:
+        heredoc_terminator_match = _match_heredoc_start(line)
+        if heredoc_terminator_match:
             in_heredoc = True
-            heredoc_terminator = heredoc_match.group(1)
+            heredoc_terminator = heredoc_terminator_match
             # Continue to process the heredoc start line if it contains '=' or boundary markers
         
         if _has_assignment_equals(line) and not line_stripped.startswith('#'):
             # Skip block declarations
-            if not re.match(r'^\s*(data|resource|variable|output|locals|module)\s+', line):
+            if not re.match(r'^\s*(data|resource|ephemeral|variable|output|locals|module|check|import|moved)\s+', line):
                 # Skip provider declarations in required_providers blocks
                 if (re.match(r'^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*\{', line) and
                     any('required_providers' in prev_line for prev_line, _ in section)):
@@ -1570,9 +1641,15 @@ def _check_parameter_alignment_in_section(
             group_errors = _check_group_alignment(sub_group, indent_level, block_type, block_start_line, block_lines)
             errors.extend(group_errors)
             
-            # Always check spacing for all parameters
+            # Check '=' after-spacing; skip lines already owned by ST.004/ST.005
             for line, relative_line_idx in sub_group:
-                spacing_errors = _check_parameter_spacing(line, relative_line_idx, block_type, block_start_line)
+                if _should_skip_due_to_format_conflicts(
+                    line, indent_level, relative_line_idx, block_lines
+                ):
+                    continue
+                spacing_errors = _check_parameter_spacing(
+                    line, relative_line_idx, block_type, block_start_line
+                )
                 errors.extend(spacing_errors)
 
     return errors
@@ -1583,76 +1660,239 @@ def _has_st004_issue(line: str) -> bool:
     return '\t' in line
 
 
-def _has_st005_issue(line: str, indent_level: int, relative_line_idx: int = 0, block_lines: List[str] = None) -> bool:
-    """Check if line has ST.005 issue (incorrect indentation)."""
+def _has_st005_issue(line: str, indent_level: int = 0, relative_line_idx: int = 0,
+                     block_lines: List[str] = None) -> bool:
+    """
+    Return True when the line has a clear ST.005-class indentation issue.
+
+    Only odd space counts are treated as conflicts here. Nesting-depth mistakes
+    that still use even indentation are left for ST.005 itself; ST.003 may still
+    report alignment on those lines (complementary, not conflicting).
+
+    Extra parameters are retained for call-site compatibility.
+    """
+    _ = (indent_level, relative_line_idx, block_lines)
     actual_indent = len(line) - len(line.lstrip())
-    # Check if indentation is not a multiple of 2
-    if actual_indent % 2 != 0:
+    return actual_indent % 2 != 0
+
+
+# Resource/data/module-level meta-parameters owned by ST.008 for blank-line spacing.
+# They must not participate in column alignment, but still use compact '=' spacing.
+_RESOURCE_META_PARAMETERS = frozenset(['count', 'for_each', 'provider', 'depends_on', 'lifecycle'])
+_DYNAMIC_BLOCK_OPEN_RE = re.compile(
+    r'dynamic\s+(?:"[^"]+"|\'[^\']+\'|[a-zA-Z_][a-zA-Z0-9_]*)\s*\{'
+)
+_FOR_EACH_IDENT_RE = re.compile(r'(?<![A-Za-z0-9_])for_each(?![A-Za-z0-9_])')
+
+
+def _find_unquoted_for_each_pos(line: str) -> Optional[int]:
+    """Return start index of an unquoted `for_each` identifier, or None."""
+    in_double = False
+    in_single = False
+    i = 0
+    while i < len(line):
+        ch = line[i]
+        if ch == '\\' and (in_double or in_single) and i + 1 < len(line):
+            i += 2
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == "'" and not in_double:
+            in_single = not in_single
+        elif not in_double and not in_single:
+            match = _FOR_EACH_IDENT_RE.match(line, i)
+            if match:
+                return match.start()
+        i += 1
+    return None
+
+
+def _scan_braces_for_dynamic(line: str, end: int, brace_depth: int,
+                             dynamic_open_depths: List[int]) -> int:
+    """Scan line[:end] updating brace depth / dynamic stack; return new brace_depth."""
+    stripped = line.strip()
+    if not stripped or stripped.startswith('#'):
+        return brace_depth
+
+    # Only treat as dynamic open if the opening '{' falls inside the scanned range.
+    opens_dynamic = bool(_DYNAMIC_BLOCK_OPEN_RE.match(stripped))
+    in_double = False
+    in_single = False
+    i = 0
+    while i < end:
+        ch = line[i]
+        if ch == '\\' and (in_double or in_single) and i + 1 < len(line):
+            i += 2
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == "'" and not in_double:
+            in_single = not in_single
+        elif not in_double and not in_single:
+            if ch == '{':
+                brace_depth += 1
+                if opens_dynamic:
+                    dynamic_open_depths.append(brace_depth)
+                    opens_dynamic = False
+            elif ch == '}':
+                if dynamic_open_depths and brace_depth == dynamic_open_depths[-1]:
+                    dynamic_open_depths.pop()
+                brace_depth = max(0, brace_depth - 1)
+        i += 1
+    return brace_depth
+
+
+def _is_inside_dynamic_block(relative_line_idx: int, block_lines: Optional[List[str]]) -> bool:
+    """
+    Return True if the `for_each` at relative_line_idx is inside an open dynamic block.
+
+    Uses brace-depth tracking (quote-aware) so a closed dynamic block does not
+    keep later top-level `for_each` marked as dynamic-internal.
+
+    The current line is scanned only up to an unquoted `for_each` token so
+    same-line forms like `dynamic "x" { for_each = ... }` are detected.
+    """
+    if not block_lines or relative_line_idx < 0 or relative_line_idx >= len(block_lines):
+        return False
+
+    brace_depth = 0
+    # Brace depths at which a dynamic block was opened (depth after consuming '{').
+    dynamic_open_depths: List[int] = []
+
+    for j in range(relative_line_idx):
+        brace_depth = _scan_braces_for_dynamic(
+            block_lines[j], len(block_lines[j]), brace_depth, dynamic_open_depths
+        )
+
+    current = block_lines[relative_line_idx]
+    for_each_pos = _find_unquoted_for_each_pos(current)
+    if for_each_pos is not None:
+        brace_depth = _scan_braces_for_dynamic(
+            current, for_each_pos, brace_depth, dynamic_open_depths
+        )
+
+    return bool(dynamic_open_depths)
+
+
+def _is_resource_or_data_block(block_type: Optional[str]) -> bool:
+    """Return True for blocks where Terraform meta-parameters (count/for_each/...) apply."""
+    return bool(block_type and (
+        block_type.startswith('resource.')
+        or block_type.startswith('data.')
+        or block_type.startswith('module.')
+        or block_type.startswith('ephemeral.')
+    ))
+
+
+def _line_excluded_from_alignment_baseline(line: str) -> bool:
+    """Tab (ST.004) and odd-indent (ST.005-class) lines must not set the equals baseline."""
+    if '\t' in line:
         return True
-    # Additional check: if actual indentation is 4 spaces, check if previous line mentions ST.005
-    if actual_indent == 4 and block_lines and relative_line_idx > 0:
-        # Check the previous line in original content for ST.005 comment
-        prev_line = block_lines[relative_line_idx - 1]
-        if "ST.005" in prev_line:
-            return True
-    return False
+    actual_indent = len(line) - len(line.lstrip())
+    return actual_indent % 2 != 0
 
 
-def _has_st008_issue(param_name: str, relative_line_idx: int, block_lines: List[str], 
-                     meta_parameters: List[str]) -> bool:
+def _is_resource_meta_parameter(param_name: str, relative_line_idx: int = 0,
+                                block_lines: Optional[List[str]] = None,
+                                block_type: Optional[str] = None) -> bool:
     """
-    Check if line has ST.008 issue.
-    ST.008 issue occurs ONLY when the parameter is a meta-parameter itself.
-    Note: Multiple blank lines are handled by ST.007 and don't cause ST.003 to skip.
+    Return True for meta-parameters that skip column alignment.
+
+    Only applies inside resource/data/module blocks so ordinary attributes named
+    `count` (e.g. in variable object types or locals) are unaffected.
+
+    `for_each` inside a dynamic block is treated as a normal parameter (aligned with
+    ST.008), so it still participates in compact/column checks of its local group.
     """
-    # If it's a meta-parameter itself, skip ST.003 for it
-    return param_name in meta_parameters
+    if not _is_resource_or_data_block(block_type):
+        return False
+    if param_name not in _RESOURCE_META_PARAMETERS:
+        return False
+    if param_name == 'for_each' and _is_inside_dynamic_block(relative_line_idx, block_lines):
+        return False
+    return True
 
 
-def _should_skip_alignment_check(line: str, param_name: str, relative_line_idx: int,
-                                  indent_level: int, block_lines: List[str] = None) -> bool:
-    """Determine if alignment check should be skipped due to other rule issues."""
-    meta_parameters = ['count', 'for_each', 'provider', 'depends_on', 'lifecycle']
-    
-    # Check ST.004 (tab character)
+def _should_skip_due_to_format_conflicts(line: str, indent_level: int,
+                                         relative_line_idx: int = 0,
+                                         block_lines: Optional[List[str]] = None) -> bool:
+    """Skip ST.003 when ST.004/ST.005 already apply to the line."""
     if _has_st004_issue(line):
         return True
-    
-    # Check ST.005 (incorrect indentation)
     if _has_st005_issue(line, indent_level, relative_line_idx, block_lines):
         return True
-    
-    # Check ST.008 (meta-parameter or multiple blank lines)
-    if _has_st008_issue(param_name, relative_line_idx, block_lines, meta_parameters):
-        return True
-    
     return False
+
+
+def _param_name_quote_chars(line: str, equals_pos: Optional[int] = None) -> int:
+    """Return 2 if the parameter name before '=' is quoted, otherwise 0."""
+    if equals_pos is None:
+        before = _get_before_assignment_equals(line).strip()
+    else:
+        before = line[:equals_pos].strip()
+    if len(before) >= 2 and before[0] == before[-1] and before[0] in ('"', "'"):
+        return 2
+    return 0
+
+
+def _param_visual_name_width(param_name: str, line: str, equals_pos: Optional[int] = None) -> int:
+    """Visual width of a parameter name including surrounding quotes."""
+    return len(param_name) + _param_name_quote_chars(line, equals_pos)
+
+
+def _expected_equals_location_from_params(indent_spaces: int,
+                                          params: List[Tuple[str, str, int]]) -> int:
+    """
+    Compute expected '=' column from (param_name, line, equals_pos) items.
+
+    Uses max(len(name) + quote_chars) so mixed quoted/unquoted names do not
+    incorrectly add +2 for every parameter in the group.
+    """
+    max_width = max(
+        _param_visual_name_width(param_name, line, equals_pos)
+        for param_name, line, equals_pos in params
+    )
+    return indent_spaces + max_width + 1
+
+
+def _count_spaces_before_equals(line: str, equals_pos: int) -> int:
+    """Count whitespace characters between the parameter name and '='."""
+    before_equals = line[:equals_pos]
+    return len(before_equals) - len(before_equals.rstrip())
+
+
+def _compact_equals_before_spacing_error(actual_line_num: int, block_type: str,
+                                         line: str, equals_pos: int) -> Optional[Tuple[int, str]]:
+    """Return an error if there is not exactly one space before '='."""
+    if _count_spaces_before_equals(line, equals_pos) == 1:
+        return None
+    return (
+        actual_line_num,
+        f"Parameter assignment equals sign spacing incorrect in {block_type}. "
+        f"Expected exactly 1 space between parameter name and '='"
+    )
 
 
 def _check_equals_after_spacing(line: str, relative_line_idx: int, block_type: str, 
                                 block_start_line: int) -> List[Tuple[int, str]]:
-    """Check space after equals sign (must be exactly 1 space)."""
+    """Check space after equals sign (must be exactly 1 space) for every assignment on the line."""
     errors = []
     actual_line_num = block_start_line + relative_line_idx + 1
-    
-    equals_pos = _find_assignment_equals_pos(line)
-    if equals_pos == -1:
-        return errors
-    
-    after_equals = line[equals_pos + 1:]
-    
-    # Check space after equals sign
-    if not after_equals.startswith(' '):
-        errors.append((
-            actual_line_num,
-            f"Parameter assignment should have exactly one space after '=' in {block_type}"
-        ))
-    elif after_equals.startswith('  '):
-        errors.append((
-            actual_line_num,
-            f"Parameter assignment should have exactly one space after '=' in {block_type}, found multiple spaces"
-        ))
-    
+
+    for equals_pos in _find_all_assignment_equals_positions(line):
+        after_equals = line[equals_pos + 1:]
+
+        if not after_equals.startswith(' '):
+            errors.append((
+                actual_line_num,
+                f"Parameter assignment should have exactly one space after '=' in {block_type}"
+            ))
+        elif after_equals.startswith('  '):
+            errors.append((
+                actual_line_num,
+                f"Parameter assignment should have exactly one space after '=' in {block_type}, found multiple spaces"
+            ))
+
     return errors
 
 
@@ -1669,9 +1909,25 @@ def _check_group_alignment(
     # Extract parameter names and find longest
     param_data = []
     for line, relative_line_idx in group_lines:
-        equals_pos = _find_assignment_equals_pos(line)
-        if equals_pos == -1:
+        equals_positions = _find_all_assignment_equals_positions(line)
+        if not equals_positions:
             continue
+
+        # Same-line multi-assignment: spacing-only (no column alignment).
+        if len(equals_positions) > 1:
+            actual_line_num = block_start_line + relative_line_idx + 1
+            if not _should_skip_due_to_format_conflicts(
+                line, indent_level, relative_line_idx, block_lines
+            ):
+                for equals_pos in equals_positions:
+                    compact_error = _compact_equals_before_spacing_error(
+                        actual_line_num, block_type, line, equals_pos
+                    )
+                    if compact_error:
+                        errors.append(compact_error)
+            continue
+
+        equals_pos = equals_positions[0]
         
         # Skip array/list declarations
         before_equals = line[:equals_pos]
@@ -1682,9 +1938,8 @@ def _check_group_alignment(
         after_equals = line[equals_pos + 1:].strip()
         is_nested_block = after_equals.startswith('{')
         
-        param_name_match = re.match(r'^\s*(["\']?)([^"\'=\s]+)\1\s*$', before_equals)
-        if param_name_match:
-            param_name = param_name_match.group(2)
+        param_name = _extract_assignment_param_name(before_equals)
+        if param_name:
             # Include nested blocks for alignment checking
             # Don't skip them, they should still be aligned with other parameters
             param_data.append((param_name, line, relative_line_idx, equals_pos, is_nested_block))
@@ -1693,104 +1948,68 @@ def _check_group_alignment(
         return errors
     
     # Special case: if there's only one parameter in the section, only check that there's exactly 1 space before '='
-    # This handles cases where a parameter is in its own section (e.g., separated by empty lines)
+    # This handles cases where a parameter is in its own section (e.g., separated by empty lines).
+    # Resource meta-parameters are included here so padded forms like `provider             = x` are caught.
     if len(param_data) == 1:
         param_name, line, relative_line_idx, equals_pos, is_nested_block = param_data[0]
         actual_line_num = block_start_line + relative_line_idx + 1
         
-        # Check if should skip due to ST.004, ST.005, or ST.008 issues
-        if _should_skip_alignment_check(line, param_name, relative_line_idx, indent_level, block_lines):
+        if _should_skip_due_to_format_conflicts(line, indent_level, relative_line_idx, block_lines):
             return errors
         
-        # Check that there's exactly 1 space before '='
-        before_equals = line[:equals_pos]
-        param_name_end = before_equals.rstrip()
-        spaces_before_equals = len(before_equals) - len(param_name_end)
-        
-        if spaces_before_equals != 1:
-            errors.append((
-                actual_line_num,
-                f"Parameter assignment equals sign spacing incorrect in {block_type}. "
-                f"Expected exactly 1 space between parameter name and '='"
-            ))
+        compact_error = _compact_equals_before_spacing_error(
+            actual_line_num, block_type, line, equals_pos
+        )
+        if compact_error:
+            errors.append(compact_error)
         
         return errors
-    
-    # Find longest parameter name
-    longest_param_name_length = max(len(param_name) for param_name, _, _, _, _ in param_data) if param_data else 0
+
+    # Column alignment uses only non-meta, non-conflict parameters so they do not distort the baseline.
+    alignment_params = [
+        item for item in param_data
+        if not _is_resource_meta_parameter(item[0], item[2], block_lines, block_type)
+        and not _line_excluded_from_alignment_baseline(item[1])
+    ]
     
     indent_spaces = indent_level * 2  # Convert indent level back to spaces
-    
-    # For tfvars files, check if most parameters are already aligned
-    # If so, use the aligned position as expected location
-    unique_equals_positions = {}
-    for param_name, line, relative_line_idx, equals_pos, is_nested_block in param_data:
-        if equals_pos not in unique_equals_positions:
-            unique_equals_positions[equals_pos] = []
-        unique_equals_positions[equals_pos].append((param_name, line, relative_line_idx, equals_pos))
-    
-    # For tfvars files, use actual alignment if parameters are already aligned
-    if block_type == "tfvars":
-        # If all parameters are already aligned at one position, use that position
-        if len(unique_equals_positions) == 1:
-            expected_equals_location = list(unique_equals_positions.keys())[0]
-        elif len(unique_equals_positions) > 1:
-            # More than one position, find the most common one
-            most_common_pos = max(unique_equals_positions.keys(), 
-                                key=lambda pos: len(unique_equals_positions[pos]))
-            most_common_count = len(unique_equals_positions[most_common_pos])
-            total_params = len(param_data)
-            
-            # If most parameters (> 50% and at least 2 params) are aligned at one position, use that position
-            if most_common_count > total_params * 0.5 and most_common_count >= 2:
-                expected_equals_location = most_common_pos
-            else:
-                # Calculate based on longest parameter name
-                longest_param_data = max(param_data, key=lambda x: len(x[0]))
-                longest_line = longest_param_data[1]
-                longest_equals_pos = longest_param_data[3]
-                longest_before_equals = longest_line[:longest_equals_pos]
-                longest_quote_chars = 2 if longest_before_equals.strip().startswith('"') else 0
-                expected_equals_location = indent_spaces + longest_param_name_length + longest_quote_chars + 1
-        else:
-            # Calculate based on longest parameter name
-            longest_param_data = max(param_data, key=lambda x: len(x[0]))
-            longest_line = longest_param_data[1]
-            longest_equals_pos = longest_param_data[3]
-            longest_before_equals = longest_line[:longest_equals_pos]
-            longest_quote_chars = 2 if longest_before_equals.strip().startswith('"') else 0
-            expected_equals_location = indent_spaces + longest_param_name_length + longest_quote_chars + 1
-    else:
-        # Calculate expected equals location based on longest parameter name
-        # Formula: indent_spaces + param_name_length + quote_chars + 1 (standard space before equals)
-        longest_param_data = max(param_data, key=lambda x: len(x[0]))
-        longest_line = longest_param_data[1]
-        longest_equals_pos = longest_param_data[3]
-        longest_before_equals = longest_line[:longest_equals_pos]
-        
-        # Check if ANY parameter in the group has quotes
-        # This ensures we use correct quote_chars even if longest param doesn't have quotes
-        has_quoted_params = any(
-            _get_before_assignment_equals(line).strip().startswith('"') 
-            for _, line, _, _, _ in param_data
-        )
-        longest_quote_chars = 2 if has_quoted_params else 0
-        
-        expected_equals_location = indent_spaces + longest_param_name_length + longest_quote_chars + 1
-    
-    # Check alignment for each parameter
+    expected_equals_location = None
+
+    if alignment_params:
+        visual_params = [
+            (param_name, line, equals_pos)
+            for param_name, line, _, equals_pos, _ in alignment_params
+        ]
+        # Formula: indent + max(len(name) + quote_chars) + 1 space before '='
+        # (.tfvars uses _check_group_alignment_tfvars instead of this path.)
+        expected_equals_location = _expected_equals_location_from_params(indent_spaces, visual_params)
+
+    # Check each parameter: meta -> compact spacing only; others -> column alignment
     for param_name, line, relative_line_idx, equals_pos, is_nested_block in param_data:
         actual_line_num = block_start_line + relative_line_idx + 1
-        
+
+        if _should_skip_due_to_format_conflicts(line, indent_level, relative_line_idx, block_lines):
+            continue
+
+        if _is_resource_meta_parameter(param_name, relative_line_idx, block_lines, block_type):
+            compact_error = _compact_equals_before_spacing_error(
+                actual_line_num, block_type, line, equals_pos
+            )
+            if compact_error:
+                errors.append(compact_error)
+            continue
+
+        if expected_equals_location is None:
+            continue
+
         # Skip alignment check if equals position matches expected location
         if equals_pos == expected_equals_location:
             continue
-        
-        # Check if should skip due to ST.004, ST.005, or ST.008 issues
-        if _should_skip_alignment_check(line, param_name, relative_line_idx, indent_level, block_lines):
-            continue
-            
-        required_spaces_before_equals = expected_equals_location - indent_spaces - len(param_name)
+
+        quote_chars = _param_name_quote_chars(line, equals_pos)
+        required_spaces_before_equals = (
+            expected_equals_location - indent_spaces - len(param_name) - quote_chars
+        )
         
         if equals_pos < expected_equals_location:
             errors.append((
@@ -1846,12 +2065,11 @@ def get_rule_description() -> dict:
         "id": "ST.003",
         "name": "Parameter alignment check",
         "description": (
-            "Validates that parameter assignments in resource, data, provider, locals, terraform, and variable blocks "
-            "have equals signs aligned, with aligned equals signs maintaining one space "
-            "from the longest parameter name in the code block and one space "
-            "between the equals sign and parameter value. Also supports terraform.tfvars files "
-            "for variable assignment alignment checking. This ensures code readability and "
-            "follows Terraform formatting standards across all supported file types."
+            "Validates that parameter assignments in resource, data, ephemeral, module, provider, locals, "
+            "terraform, variable, output, import, moved, and check blocks have equals signs aligned "
+            "(quote-aware) with one space after '='. In resource/data/module/ephemeral blocks, meta-parameters "
+            "skip column alignment but still require compact '=' spacing. terraform.tfvars is also supported, "
+            "with single-parameter groups requiring exactly one space before '='."
         ),
         "category": "Style/Format",
         "severity": "error",
@@ -2078,10 +2296,10 @@ def _check_tfvars_parameter_alignment(file_path: str, content: str, log_error_fu
         # Check for heredoc start pattern (<<EOF, <<-EOF, etc.)
         # This must be checked AFTER we've processed the line (if it contains '=' or boundary markers)
         # Match <<EOF or <<-EOF at the end of a line
-        heredoc_match = re.search(r'<<-?([A-Z]+)\s*$', line)
-        if heredoc_match:
+        heredoc_terminator_match = _match_heredoc_start(line)
+        if heredoc_terminator_match:
             in_heredoc = True
-            heredoc_terminator = heredoc_match.group(1)
+            heredoc_terminator = heredoc_terminator_match
             # Continue to process the heredoc start line if it contains '=' or boundary markers
         
         stripped = line_stripped
@@ -2653,7 +2871,7 @@ def _check_tfvars_parameter_alignment_in_section(section: List[Tuple[str, int]],
         line = line_content.rstrip()
         if _has_assignment_equals(line) and not line.strip().startswith('#'):
             # Skip block declarations
-            if not re.match(r'^\s*(data|resource|variable|output|locals|module)\s+', line):
+            if not re.match(r'^\s*(data|resource|ephemeral|variable|output|locals|module|check|import|moved)\s+', line):
                 # Skip lines where equals sign is inside a string value (e.g., "==", "!=")
                 if _is_equals_in_string_value(line):
                     continue
@@ -2853,24 +3071,22 @@ def _compute_expected_equals_location_tfvars(group_lines: List[Tuple[int, str]],
     if not param_data:
         return None
     indent_spaces = indent_level * 2
-    # Compute longest considering skip logic like in main function
+    # Compute longest visual width (name + quotes) considering skip logic
     non_skipped_non_tab_params = [p for p in param_data if not p[4] and '\t' not in p[1]]
     if non_skipped_non_tab_params:
-        longest_param_len = max(len(p[0]) for p in non_skipped_non_tab_params)
+        longest_param_width = max(_param_visual_name_width(p[0], p[1], p[3]) for p in non_skipped_non_tab_params)
         skipped_non_tab_params = [p for p in param_data if p[4] and '\t' not in p[1]]
         if skipped_non_tab_params:
-            longest_skipped_len = max(len(p[0]) for p in skipped_non_tab_params)
-            if longest_skipped_len > longest_param_len and longest_skipped_len - longest_param_len >= 4:
-                longest_param_len = longest_skipped_len
+            longest_skipped_width = max(_param_visual_name_width(p[0], p[1], p[3]) for p in skipped_non_tab_params)
+            if longest_skipped_width > longest_param_width and longest_skipped_width - longest_param_width >= 4:
+                longest_param_width = longest_skipped_width
     else:
         non_tab_params = [p for p in param_data if '\t' not in p[1]]
         if non_tab_params:
-            longest_param_len = max(len(p[0]) for p in non_tab_params)
+            longest_param_width = max(_param_visual_name_width(p[0], p[1], p[3]) for p in non_tab_params)
         else:
-            longest_param_len = max(len(p[0]) for p in param_data)
-    has_quoted_params = any(_get_before_assignment_equals(line).strip().startswith('"') or _get_before_assignment_equals(line).strip().startswith("'") for _, line, _, _, _ in param_data)
-    quote_chars = 2 if has_quoted_params else 0
-    return indent_spaces + longest_param_len + quote_chars + 1
+            longest_param_width = max(_param_visual_name_width(p[0], p[1], p[3]) for p in param_data)
+    return indent_spaces + longest_param_width + 1
 
 
 def _check_group_alignment_tfvars(group_lines: List[Tuple[int, str]], indent_level: int, block_type: str) -> List[Tuple[int, str]]:
@@ -2935,39 +3151,44 @@ def _check_group_alignment_tfvars(group_lines: List[Tuple[int, str]], indent_lev
             # Also store whether this should be skipped from expected position calculation
             param_data.append((param_name, line, actual_line_num, equals_pos, should_skip_from_expected_calc))
     
+    # Single-parameter groups: require compact before '=' (same as .tf). Column alignment N/A.
     if len(param_data) < 2:
+        if len(param_data) == 1:
+            param_name, line, actual_line_num, equals_pos, _should_skip = param_data[0]
+            if '\t' not in line:
+                compact_error = _compact_equals_before_spacing_error(
+                    actual_line_num, block_type, line, equals_pos
+                )
+                if compact_error:
+                    errors.append(compact_error)
         return errors
     
-    # Find longest parameter name
+    # Find longest visual parameter width (name + quotes)
     # First get longest from non-skipped and non-tab parameters (for expected position calculation)
     # Parameters with tabs (ST.004) should not influence expected position
-    non_skipped_non_tab_params_len = [
-        len(p[0]) for p in param_data 
+    non_skipped_non_tab_widths = [
+        _param_visual_name_width(p[0], p[1], p[3]) for p in param_data
         if not p[4] and '\t' not in p[1]  # p[4] is should_skip, p[1] is line
     ]
-    if non_skipped_non_tab_params_len:
-        longest_param_name_length = max(non_skipped_non_tab_params_len)
+    if non_skipped_non_tab_widths:
+        longest_param_width = max(non_skipped_non_tab_widths)
         # If we have skipped parameters (object/array declarations) that are significantly longer,
         # use them for alignment calculation
-        # This ensures parameters can align with object declarations when appropriate
-        skipped_params_len = [len(p[0]) for p in param_data if p[4] and '\t' not in p[1]]
-        if skipped_params_len:
-            longest_skipped_len = max(skipped_params_len)
-            # If the longest skipped parameter is significantly longer than non-skipped ones,
-            # use it for expected position calculation
-            # This handles cases where multiple simple params (like size, type) should align
-            # with a longer object declaration parameter (like extend_param)
-            if longest_skipped_len > longest_param_name_length and longest_skipped_len - longest_param_name_length >= 4:
-                # Skip parameter is significantly longer (at least 4 chars), use it
-                longest_param_name_length = longest_skipped_len
+        skipped_params_widths = [
+            _param_visual_name_width(p[0], p[1], p[3]) for p in param_data if p[4] and '\t' not in p[1]
+        ]
+        if skipped_params_widths:
+            longest_skipped_width = max(skipped_params_widths)
+            if longest_skipped_width > longest_param_width and longest_skipped_width - longest_param_width >= 4:
+                longest_param_width = longest_skipped_width
     else:
         # All parameters are skipped or have tabs, use all non-tab params
-        non_tab_params_len = [len(p[0]) for p in param_data if '\t' not in p[1]]
-        if non_tab_params_len:
-            longest_param_name_length = max(non_tab_params_len)
+        non_tab_widths = [_param_visual_name_width(p[0], p[1], p[3]) for p in param_data if '\t' not in p[1]]
+        if non_tab_widths:
+            longest_param_width = max(non_tab_widths)
         else:
             # All have tabs, use all params
-            longest_param_name_length = max(len(p[0]) for p in param_data)
+            longest_param_width = max(_param_visual_name_width(p[0], p[1], p[3]) for p in param_data)
     indent_spaces = indent_level * 2
     
     # For tfvars files, check if most parameters are already aligned
@@ -2984,16 +3205,7 @@ def _check_group_alignment_tfvars(group_lines: List[Tuple[int, str]], indent_lev
     # If all params are already aligned at one position, still check spacing after equals
     # and skip lines with tabs (ST.004) - but still check alignment based on longest param
     if len(unique_equals_positions) == 1:
-        # Check if the aligned position matches the expected position based on longest parameter
-        # Use the same longest_param_name_length that was calculated earlier, which properly
-        # considers skipped parameters and special cases
-        # Check if any parameter has quotes and add quote length
-        has_quoted_params = any(
-            _get_before_assignment_equals(line).strip().startswith('"') or _get_before_assignment_equals(line).strip().startswith("'")
-            for _, line, _, _, _ in param_data
-        )
-        quote_chars = 2 if has_quoted_params else 0
-        expected_equals_location = indent_spaces + longest_param_name_length + quote_chars + 1
+        expected_equals_location = indent_spaces + longest_param_width + 1
         
         # If the aligned position doesn't match the expected position, they need realignment
         aligned_position = list(unique_equals_positions.keys())[0]
@@ -3013,7 +3225,10 @@ def _check_group_alignment_tfvars(group_lines: List[Tuple[int, str]], indent_lev
                     continue
                 
                 if equals_pos != expected_equals_location:
-                    required_spaces_before_equals = expected_equals_location - indent_spaces - len(param_name)
+                    quote_chars = _param_name_quote_chars(line, equals_pos)
+                    required_spaces_before_equals = (
+                        expected_equals_location - indent_spaces - len(param_name) - quote_chars
+                    )
                     errors.append((
                         actual_line_num,
                         f"Parameter assignment equals sign not aligned in {block_type}. "
@@ -3066,87 +3281,56 @@ def _check_group_alignment_tfvars(group_lines: List[Tuple[int, str]], indent_lev
         if total_params == 0:
             total_params = len(param_data)
     
-    # Calculate expected position based on longest parameter
+    # Calculate expected position based on longest visual parameter width
     # First try to get longest from non-skipped and non-tab parameters
     # Parameters with tabs (ST.004) should not influence expected position
     non_skipped_non_tab_params = [p for p in param_data if not p[4] and '\t' not in p[1]]  # p[4] is should_skip, p[1] is line
     if non_skipped_non_tab_params:
-        longest_param_len = max(len(p[0]) for p in non_skipped_non_tab_params)  # p[0] is param_name
-        # If we have skipped parameters (object/array declarations) that are longer,
-        # consider using them for alignment calculation
-        # This ensures parameters can align with object declarations when appropriate
+        longest_param_width = max(_param_visual_name_width(p[0], p[1], p[3]) for p in non_skipped_non_tab_params)
         skipped_non_tab_params = [p for p in param_data if p[4] and '\t' not in p[1]]
         if skipped_non_tab_params:
-            longest_skipped_len = max(len(p[0]) for p in skipped_non_tab_params)
-            # If the longest skipped parameter is significantly longer than non-skipped ones,
-            # use it for expected position calculation
-            # This handles cases where multiple simple params (like size, type) should align
-            # with a longer object declaration parameter (like extend_param)
-            if longest_skipped_len > longest_param_len and longest_skipped_len - longest_param_len >= 4:
-                # Skip parameter is significantly longer (at least 4 chars), use it
-                longest_param_len = longest_skipped_len
+            longest_skipped_width = max(_param_visual_name_width(p[0], p[1], p[3]) for p in skipped_non_tab_params)
+            if longest_skipped_width > longest_param_width and longest_skipped_width - longest_param_width >= 4:
+                longest_param_width = longest_skipped_width
     else:
         # All parameters are skipped or have tabs, use all non-tab params
         non_tab_params = [p for p in param_data if '\t' not in p[1]]
         if non_tab_params:
-            longest_param_len = max(len(p[0]) for p in non_tab_params)
+            longest_param_width = max(_param_visual_name_width(p[0], p[1], p[3]) for p in non_tab_params)
         else:
             # All have tabs, use all params
-            longest_param_len = max(len(p[0]) for p in param_data)
-    # Check if any parameter has quotes and add quote length
-    has_quoted_params = any(
-        _get_before_assignment_equals(line).strip().startswith('"') or _get_before_assignment_equals(line).strip().startswith("'")
-        for _, line, _, _, _ in param_data
-    )
-    quote_chars = 2 if has_quoted_params else 0
-    # The equals position is calculated as: indent + param_name_length + quote_chars + 1 space between param and =
-    expected_equals_location = indent_spaces + longest_param_len + quote_chars + 1
+            longest_param_width = max(_param_visual_name_width(p[0], p[1], p[3]) for p in param_data)
+    # The equals position is: indent + max(visual name width) + 1 space between param and =
+    expected_equals_location = indent_spaces + longest_param_width + 1
     
     # If more than half of parameters are already aligned at a specific position,
     # use that position (they're already aligned, so it's valid)
-    # Use the most common position if most parameters are aligned there
-    # This respects existing alignment patterns
-    # However, if the expected location based on longest parameter (including object declarations)
-    # differs significantly from the most_common position, we should use the longest-based position
-    # This ensures parameters correctly align with their object declarations
     use_most_common = False
-    expected_based_on_longest = indent_spaces + longest_param_len + quote_chars + 1
+    expected_based_on_longest = indent_spaces + longest_param_width + 1
     
     if most_common_count > total_params / 2 or (total_params == 2 and most_common_count == 2):
-        # Check if most_common position is close to the expected position based on longest parameter
-        # If they differ significantly (>=2 columns), use the longest-based position instead
-        # This prevents cases where a majority of parameters from different objects are aligned
-        # but we need to align with an object declaration in the same group
         if abs(most_common_pos[0] - expected_based_on_longest) >= 2:
-            # Most common position differs significantly from expected - use expected position
-            # This handles cases like: multiple size params at position 9, but extend_param at 17
             use_most_common = False
         else:
             expected_equals_location = most_common_pos[0]
             use_most_common = True
         
-        # Only execute this branch if we're actually using most_common position
-        # Otherwise, fall through to the normal alignment check loop below
         if use_most_common:
-            # Check alignment for all parameters
             for param_name, line, actual_line_num, equals_pos, should_skip in param_data:
-                # Skip nested object/array declaration lines from alignment check
                 if should_skip:
                     continue
                 
                 if equals_pos != expected_equals_location:
-                    # Check if this parameter is aligned with the majority
                     if most_common_count > 1 and equals_pos == most_common_pos[0]:
-                        # This parameter is aligned with the majority, skip check
                         continue
                     
-                    # Check if it's close enough to be considered aligned
                     if abs(equals_pos - expected_equals_location) <= 1:
-                        # Close enough, skip alignment check
                         continue
                     
-                    # Too far off, report alignment error
-                    required_spaces_before_equals = expected_equals_location - indent_spaces - len(param_name)
+                    quote_chars = _param_name_quote_chars(line, equals_pos)
+                    required_spaces_before_equals = (
+                        expected_equals_location - indent_spaces - len(param_name) - quote_chars
+                    )
                     if equals_pos < expected_equals_location:
                         errors.append((
                             actual_line_num,
@@ -3161,9 +3345,7 @@ def _check_group_alignment_tfvars(group_lines: List[Tuple[int, str]], indent_lev
                             f"Too many spaces before '=', equals sign should be at column {expected_equals_location + 1}"
                         ))
             
-            # Check spacing after equals for all parameters
             for param_name, line, actual_line_num, equals_pos, should_skip in param_data:
-                # Skip nested object/array declaration lines
                 if should_skip:
                     continue
                 
@@ -3176,18 +3358,8 @@ def _check_group_alignment_tfvars(group_lines: List[Tuple[int, str]], indent_lev
             
             return errors
     
-    # Calculate expected equals location based on longest parameter name
-    # For tfvars files, always align to longest parameter name
-    # Check if any parameter has quotes
-    has_quoted_params = any(
-        _get_before_assignment_equals(line).strip().startswith('"') or _get_before_assignment_equals(line).strip().startswith("'")
-        for _, line, _, _, _ in param_data
-    )
-    quote_chars = 2 if has_quoted_params else 0
-    # Calculate expected location based on longest parameter
-    # Use longest_param_len which is already calculated above (at line 1249-1265)
-    # and includes the logic to consider object/array declarations when appropriate
-    expected_equals_location_base = indent_spaces + longest_param_len + quote_chars + 1
+    # Calculate expected equals location based on longest visual parameter width
+    expected_equals_location_base = indent_spaces + longest_param_width + 1
     
     # If we already determined to use most common position, keep it
     # Otherwise use the base calculation
