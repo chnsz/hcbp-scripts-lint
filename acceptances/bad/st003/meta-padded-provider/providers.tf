@@ -1,0 +1,19 @@
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    huaweicloud = {
+      source  = "huaweicloud/huaweicloud"
+      version = ">= 1.70.0"
+    }
+  }
+}
+
+provider "huaweicloud" {
+  region = "cn-north-4"
+}
+
+provider "huaweicloud" {
+  alias  = "dr"
+  region = "cn-north-1"
+}
