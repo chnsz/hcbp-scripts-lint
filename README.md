@@ -22,6 +22,9 @@ local development, we provide everything you need to ensure code quality and con
 
 📖 **[Complete Quick Start Guide](docs/guides/quickstart.md)** - Detailed setup, configuration, and usage examples
 
+Acceptance fixtures for rule validation live under [`acceptances/`](acceptances/) (`good` / `bad` per rule). Demo trees
+are under [`examples/`](examples/).
+
 ---
 
 ## 🔧 Installation & Usage

@@ -5,7 +5,7 @@ your CI/CD pipeline.
 
 ## Files
 
-### `terraform-lint.yml`
+### `terraform_lint_example.yml`
 
 This is a comprehensive example workflow that shows various ways to integrate the Terraform Scripts Lint Tool into your
 GitHub Actions pipeline. It includes:
@@ -16,16 +16,21 @@ GitHub Actions pipeline. It includes:
 - **Integration Examples**: How to combine with other Terraform tools
 - **Performance Tips**: Optimization suggestions for large repositories
 
+### Other workflow files
+
+- `lint_example.yml` — additional lint workflow sample
+- `cli_upgrade_tests.yml` — CLI upgrade related tests
+
 ## Reference
 
-### [terraform-lint.example.yml](terraform-lint.example.yml)
+### [terraform_lint_example.yml](terraform_lint_example.yml)
 
 ## How to Use
 
 1. **Copy the Example File**:
 
    ```bash
-   cp .github/workflows/terraform-lint.example.yml .github/workflows/terraform-lint.yml
+   cp .github/workflows/terraform_lint_example.yml .github/workflows/terraform-lint.yml
    ```
 
 2. **Customize for Your Project**:
@@ -60,9 +65,9 @@ GitHub Actions pipeline. It includes:
 - name: Development Lint
   uses: chnsz/hcbp-scripts-lint@v1
   with:
-    directory: './dev'
-    ignore-rules: 'ST.001,ST.003'  # Allow flexible naming
+    directory: './terraform'
     fail-on-error: 'false'
+    ignore-rules: 'ST.001,ST.002'
 ```
 
 ### 2. Production Environment (Strict)
@@ -71,39 +76,31 @@ GitHub Actions pipeline. It includes:
 - name: Production Lint
   uses: chnsz/hcbp-scripts-lint@v1
   with:
-    directory: './prod'
-    fail-on-error: 'true'  # Enforce all rules
-```
-
-### 3. Module Validation
-
-```yaml
-- name: Module Lint
-  uses: chnsz/hcbp-scripts-lint@v1
-  with:
-    include-paths: './modules'
-    exclude-paths: 'modules/*/examples/*'
+    directory: './terraform'
     fail-on-error: 'true'
 ```
 
-## Integration with Other Tools
+### 3. Selective Path Filtering
 
-The example workflow also shows how to integrate with:
-
-- `terraform fmt` for formatting checks
-- `terraform validate` for syntax validation
-- Path filtering to run only on Terraform file changes
-- Artifact uploading for lint reports
+```yaml
+- name: Selective Lint
+  uses: chnsz/hcbp-scripts-lint@v1
+  with:
+    directory: './terraform'
+    include-paths: 'modules/**,environments/prod/**'
+    exclude-paths: '**/*.md,**/test/**'
+```
 
 ## Troubleshooting
 
-Common issues and solutions are documented in the example workflow file. Check the comments for:
+If you encounter issues:
 
-- Path configuration problems
-- Permission issues
-- Rule configuration errors
-- Performance optimization tips
+1. Check the [main documentation](../../docs/guides/troubleshooting.md)
+2. Review the [GitHub Setup Guide](../../docs/github/setup.md)
+3. Open an issue in the repository
 
-## Contributing
+## Notes
 
-If you have additional workflow examples or improvements, please contribute them back to the project!
+- Prefer copying `terraform_lint_example.yml` as a starting point for consumer repositories.
+- Artifact naming in Action outputs uses snake_case report files such as `terraform_lint_report.txt` /
+  `terraform_lint_report.json` (see Action logs/summary for the exact artifact name).

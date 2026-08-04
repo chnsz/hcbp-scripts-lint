@@ -15,11 +15,11 @@ resources for using and contributing to the project.
 
 ### 📋 Rules Reference
 - **[Rules Overview](rules/overview.md)** - Complete rules documentation
-- **[ST Rules](rules/st_rules.md)** - Style and Format rules
-- **[ST.008 Meta-parameter Spacing](rules/st008_meta_parameter_spacing.md)** - Detailed ST.008 rule documentation
+- **[ST Rules](rules/st_rules.md)** - Style and Format rules (including [ST.008 meta-parameter spacing](rules/st_rules.md#st008---meta-parameter-spacing-check))
 - **[IO Rules](rules/io_rules.md)** - Input/Output rules
 - **[DC Rules](rules/dc_rules.md)** - Documentation and Comments rules
 - **[SC Rules](rules/sc_rules.md)** - Security Code rules
+- **[Acceptance Fixtures](../acceptances/)** - Good/bad Terraform cases used to validate rules
 
 ### 🏗️ Project Documentation
 - **[Security Policy](project/security.md)** - Security practices and vulnerability reporting
@@ -57,6 +57,7 @@ resources for using and contributing to the project.
 ### By Task
 - **Setting up linting**: [Quick Start Guide](guides/quickstart.md)
 - **Understanding rules**: [Rules Overview](rules/overview.md)
+- **Validating rule behavior**: [Acceptance fixtures](../acceptances/)
 - **Fixing errors**: [Troubleshooting Guide](guides/troubleshooting.md)
 - **Contributing code**: [Contributing Guide](project/contributing.md)
 - **GitHub integration**: [GitHub Setup Guide](github/setup.md)

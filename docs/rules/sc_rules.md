@@ -182,10 +182,10 @@ The package includes comprehensive testing through the main linting system:
 
 ```bash
 # Test exclude a SC rule
-python3 .github/scripts/terraform_lint.py examples/bad-example/basic --ignore-rules "SC.001"
+python3 .github/scripts/terraform_lint.py examples/bad-examples/basic --ignore-rules "SC.001"
 
 # Test all rules including SC
-python3 .github/scripts/terraform_lint.py examples/bad-example/basic
+python3 .github/scripts/terraform_lint.py examples/bad-examples/basic
 ```
 
 ## 📋 Rule Details

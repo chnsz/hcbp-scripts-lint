@@ -3,6 +3,11 @@
 This document contains detailed descriptions, examples, and implementation principles for all Terraform script checking
 rules.
 
+> **Documentation sync note:** Authoritative validation criteria and edge-case behavior for each rule live under
+> [`docs/rules/`](../docs/rules/) (for example [`st_rules.md`](../docs/rules/st_rules.md)). This file is a narrative
+> overview with examples; when the two disagree, prefer `docs/rules/` and the corresponding `rules/*_rules/rule_*.py`
+> implementation. Acceptance fixtures under [`acceptances/`](../acceptances/) are the preferred regression harness.
+
 ## Rule Categories
 
 ### ST (Style/Format) - Code Formatting Rules
@@ -163,6 +168,10 @@ instance_name = "my-instance"      # Required variable declared
 **Rule Description:** Parameter assignments in code blocks must maintain proper alignment formatting with equals signs
 aligned to maintain one space from the longest parameter name.
 
+**Detailed criteria:** See [ST.003 in docs/rules/st_rules.md](../docs/rules/st_rules.md#st003---parameter-alignment-check)
+for full validation criteria, sectioning rules, and edge cases. Fixtures:
+[`acceptances/good/st003`](../acceptances/good/st003/), [`acceptances/bad/st003`](../acceptances/bad/st003/).
+
 **Purpose:**
 - Improve code readability and aesthetics
 - Maintain consistent code formatting with proper alignment
@@ -170,10 +179,25 @@ aligned to maintain one space from the longest parameter name.
 - Comply with Terraform community formatting standards
 
 **Format Requirements:**
-- Equals signs must be aligned within the same code block
-- Aligned equals signs should maintain exactly one space from the longest parameter name in the code block
+- Equals signs must be aligned within the same code block section (blank lines split sections)
+- Aligned equals signs should maintain exactly one space from the longest parameter name in the section
 - Exactly one space after the equals sign and parameter value
-- Parameters within the same code block (not separated by blank lines) should follow these alignment rules
+- Parameters within the same section (not separated by blank lines) should follow these alignment rules
+
+**Supported Block Types:**
+- `resource`, `data`, `ephemeral`, `module`, `provider`, `locals`, `terraform`, `variable`, `output`
+- `import`, `moved`, `check` (including single-line `{ ... }` bodies with assignments)
+- `terraform.tfvars` variable assignments (grouped by blank lines)
+
+**Key Special Cases (summary):**
+- Sibling `param = {` stays in the current section and aligns with peers; nested fields form their own section
+- Lines with tabs (ST.004) or odd indentation (ST.005-class) are skipped and do not set the equals baseline
+- In `resource` / `data` / `module` / `ephemeral`, meta-parameters (`count`, `for_each`, `provider`, `lifecycle`,
+  `depends_on`) are excluded from column alignment but still require exactly one space before `=`
+- `for_each` inside `dynamic` (including same-line `dynamic "x" { for_each = ... }`) is a normal parameter
+- Same-line multi-assignment: `=` spacing only (no column alignment)
+- Heredoc bodies are ignored until the matching terminator
+- tfvars: single-parameter groups still require compact `=` spacing; majority padding may be kept within a group
 
 **Error Example:**
 
@@ -214,8 +238,8 @@ resource "huaweicloud_compute_instance" "test" {
 ```
 
 **Alignment Rules:**
-- Find the longest parameter name in the code block (e.g., "availability_zone" = 17 characters)
-- All equals signs should align at position: base_indent + longest_parameter_name + 1 space
+- Find the longest parameter name in the section (e.g., "availability_zone" = 17 characters)
+- All equals signs should align at position: base_indent + longest_parameter_name + quote_chars + 1 space
 - In the example above: 2 spaces (indent) + 17 characters (longest name) + 1 space = column 20
 - Shorter parameter names are padded with spaces to align their equals signs
 
@@ -225,6 +249,7 @@ resource "huaweicloud_compute_instance" "test" {
 - Add format checking steps in CI/CD pipeline
 - Use consistent formatting tools and configurations within the team
 - Ensure proper alignment within each code block section
+- Prefer adding/updating fixtures under `acceptances/good|bad/st003/` when changing this rule
 
 ---
 

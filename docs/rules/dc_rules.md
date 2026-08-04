@@ -168,10 +168,10 @@ The package includes comprehensive testing through the main linting system:
 
 ```bash
 # Test exclude a DC rule
-python3 .github/scripts/terraform_lint.py examples/bad-example/basic --ignore-rules "DC.001"
+python3 .github/scripts/terraform_lint.py examples/bad-examples/basic --ignore-rules "DC.001"
 
 # Test all rules including DC
-python3 .github/scripts/terraform_lint.py examples/bad-example/basic
+python3 .github/scripts/terraform_lint.py examples/bad-examples/basic
 ```
 
 ## 📋 Rule Details
