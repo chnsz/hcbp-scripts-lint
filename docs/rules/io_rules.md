@@ -191,10 +191,10 @@ The package includes comprehensive testing through the main linting system:
 
 ```bash
 # Test exclude a IO rule
-python3 .github/scripts/terraform_lint.py examples/bad-example/basic --ignore-rules "IO.001"
+python3 .github/scripts/terraform_lint.py examples/bad-examples/basic --ignore-rules "IO.001"
 
 # Test all rules including IO
-python3 .github/scripts/terraform_lint.py examples/bad-example/basic
+python3 .github/scripts/terraform_lint.py examples/bad-examples/basic
 ```
 
 ## 📋 Rule Details

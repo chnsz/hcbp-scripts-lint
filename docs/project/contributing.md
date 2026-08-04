@@ -66,7 +66,10 @@ inclusive, and constructive in all interactions.
    ```bash
    # Test the tool works correctly
    python3 .github/scripts/terraform_lint.py --help
-   python3 .github/scripts/terraform_lint.py --directory examples/
+   # Smoke-check against bundled examples
+   python3 .github/scripts/terraform_lint.py --directory examples/good-examples/basic
+   # Rule acceptance fixtures (preferred for validating rule behavior)
+   python3 .github/scripts/terraform_lint.py --directory acceptances/good/st003/meta-compact
    ```
 
 ## Development Setup
@@ -78,13 +81,11 @@ hcbp-scripts-lint/
 ├── .github/
 │   ├── scripts/
 │   │   └── terraform_lint.py    # Main linting script
-│   └── workflows/               # GitHub Actions workflows
-├── rules/
-│   ├── st_rules.py              # Style/Format rules
-│   ├── dc_rules.py              # Documentation/Comments rules
-│   ├── io_rules.py              # Input/Output rules
-│   └── rule_details.md          # Detailed rule documentation
-├── examples/                    # Test examples
+│   └── workflows/               # GitHub Actions workflows / examples
+├── rules/                       # Modular rule packages (st/io/dc/sc_rules)
+├── acceptances/                 # Good/bad fixtures for rule acceptance tests
+├── examples/                    # Demo / sample Terraform trees
+├── docs/                        # User and contributor documentation
 ├── action.yml                   # GitHub Action configuration
 └── README.md                    # Main documentation
 ```
@@ -92,9 +93,10 @@ hcbp-scripts-lint/
 ### Key Components
 
 - **terraform_lint.py**: Main linting engine and CLI interface
-- **Rule Modules**: Individual rule implementations organized by category
-- **Examples**: Test cases for validation and demonstration
-- **Documentation**: Comprehensive guides and API documentation
+- **Rule Modules**: Individual rule implementations under `rules/*_rules/`
+- **Acceptances**: Primary good/bad fixtures used to validate rule behavior (`acceptances/good|bad/<rule>/`)
+- **Examples**: Broader demo trees under `examples/good-examples` and `examples/bad-examples`
+- **Documentation**: Guides under `docs/` (authoritative rule prose often mirrored in `rules/*/README.md`)
 
 ## Contributing Guidelines
 
@@ -219,15 +221,37 @@ def check_rule_example(file_path: str, content: str) -> List[str]:
 
 ### Running Tests
 
+Rule behavior is primarily validated with acceptance fixtures under `acceptances/` (Terraform `.tf` / `.tfvars`
+cases). Example ST.003-only run:
+
 ```bash
-# Run all tests
+IGNORE='ST.001,ST.002,ST.004,ST.005,ST.006,ST.007,ST.008,ST.009,ST.010,ST.011,ST.012,ST.013,ST.014,DC.001,IO.001,IO.002,IO.003,IO.004,IO.005,IO.006,IO.007,IO.008,IO.009,IO.010,IO.013,SC.001,SC.002,SC.003,SC.004,SC.005,SC.006,SC.007'
+
+# Good case: expect no [ST.003]
+python3.10 .github/scripts/terraform_lint.py \
+  --directory acceptances/good/st003/meta-compact \
+  --ignore-rules "$IGNORE"
+
+# Bad case: expect [ST.003] findings
+python3.10 .github/scripts/terraform_lint.py \
+  --directory acceptances/bad/st003/meta-padded-provider \
+  --ignore-rules "$IGNORE"
+```
+
+`examples/` remains useful for demos and broader samples; prefer `acceptances/` when adding or regressing a specific
+rule.
+
+If a `tests/` pytest suite is present in your checkout, you can also run:
+
+```bash
+# Run all tests (when present)
 python3 -m pytest tests/
 
-# Run specific category tests
+# Run specific category tests (when present)
 python3 -m pytest tests/test_st_rules.py
 python3 -m pytest tests/test_sc_rules.py
 
-# Run with coverage
+# Run with coverage (when present)
 python3 -m pytest --cov=.github/scripts tests/
 ```
 
@@ -286,10 +310,10 @@ def test_rule_implementation():
 ### Rule Development Process
 
 1. **Rule Design**: Define the rule's purpose and scope
-2. **Implementation**: Implement the rule logic
-3. **Testing**: Create comprehensive test cases
-4. **Documentation**: Document the rule thoroughly
-5. **Examples**: Provide good and bad examples
+2. **Implementation**: Implement the rule logic under `rules/<category>_rules/rule_XXX.py`
+3. **Testing**: Add good/bad fixtures under `acceptances/good|bad/<rule>/` (preferred); update `examples/` only for demos
+4. **Documentation**: Update `docs/rules/<category>_rules.md` (authoritative) and keep `rules/introduction.md` in sync
+5. **Examples**: Provide good and bad acceptance cases that exercise the new behavior
 
 ### Rule Implementation Template
 

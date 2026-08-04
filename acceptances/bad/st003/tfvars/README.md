@@ -24,15 +24,18 @@ The top-level parameters from lines 1-35 are correctly aligned at column 24. How
 **Expected Behavior:**
 All top-level parameters should be aligned at the same column position (column 24 in this case), even if they are separated by array or object declarations.
 
+### single-padded-before
+
+Single-parameter group with more than one space before `=` (should report compact spacing).
+
 ## Running Tests
 
 To verify the ST.003 rule detects these errors, run:
 
 ```bash
 python3.10 .github/scripts/terraform_lint.py \
-  --directory examples/bad-examples/rule-categories/st003/tfvar-scripts \
-  --categories ST \
-  --ignore-rules "ST.001,ST.002,ST.004,ST.005,ST.006,ST.007,ST.008,ST.009,ST.010,ST.011,ST.012,ST.013,ST.014" \
+  --directory acceptances/bad/st003/tfvars/case1 \
+  --ignore-rules "ST.001,ST.002,ST.004,ST.005,ST.006,ST.007,ST.008,ST.009,ST.010,ST.011,ST.012,ST.013,ST.014,DC.001,IO.001,IO.002,IO.003,IO.004,IO.005,IO.006,IO.007,IO.008,IO.009,IO.010,IO.013,SC.001,SC.002,SC.003,SC.004,SC.005,SC.006,SC.007" \
   | grep "ERROR"
 ```
 
