@@ -22,7 +22,7 @@ st_rules/
 ├── rule_007.py   # ST.007 - Parameter block spacing check
 ├── rule_008.py   # ST.008 - Meta-parameter spacing check
 ├── rule_009.py   # ST.009 - Variable definition order check
-├── rule_010.py   # ST.010 - Resource, data source, variable, and output quote check
+├── rule_010.py   # ST.010 - Resource, data source, variable, output, and provider quote check
 ├── rule_011.py   # ST.011 - Trailing whitespace check
 ├── rule_012.py   # ST.012 - File header and footer whitespace check
 ├── rule_013.py   # ST.013 - Directory naming convention check
@@ -42,7 +42,7 @@ st_rules/
 | ST.007 | Parameter block spacing check | Validates spacing between different types of parameters within resource, data source, provider, terraform, and locals blocks | `rule_007.py` |
 | ST.008 | Meta-parameter spacing check | Validates spacing around meta-parameters (count, for_each, provider, lifecycle, depends_on) | `rule_008.py` |
 | ST.009 | Variable definition order check | Validates variable order consistency between files | `rule_009.py` |
-| ST.010 | Resource, data source, variable, and output quote check | Ensures double quotes around resource/data source names | `rule_010.py` |
+| ST.010 | Resource, data source, variable, output, and provider quote check | Ensures double quotes around resource/data/variable/output/provider names | `rule_010.py` |
 | ST.011 | Trailing whitespace check | Removes trailing spaces and tabs from line endings | `rule_011.py` |
 | ST.012 | File header and footer whitespace check | Ensures no extra whitespace at the beginning or end of the file | `rule_012.py` |
 | ST.013 | Directory naming convention check | Validates directory names contain only letters, numbers, and hyphens, and start/end with letters | `rule_013.py` |
@@ -372,12 +372,14 @@ terraform {
 - Provider-related variables (access_key, secret_key, region_name) are excluded from ordering validation
 - Excludes authentication and region configuration variables to avoid interference with business logic ordering
 
-### ST.010 - Resource, Data Source, Variable, and Output Quote Check
+### ST.010 - Resource, Data Source, Variable, Output, and Provider Quote Check
 
-**Purpose**: Ensures double quotes around resource and data source names.
+**Purpose**: Ensures double quotes around resource, data source, variable, output, and provider names.
 
 **Validation Criteria**:
 - All resource and data source type and name identifiers must use double quotes
+- All variable and output names must use double quotes
+- All provider type names must use double quotes
 - Consistent quoting style across all Terraform files
 
 ### ST.011 - Trailing Whitespace Check

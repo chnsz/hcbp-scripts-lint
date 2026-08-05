@@ -1,5 +1,7 @@
 # IO (Input/Output) Rules Package
 
+> Authoritative IO criteria for this repo. Package-local summary: [`rules/io_rules/README.md`](../../rules/io_rules/README.md).
+
 This package contains all input/output related checking rules for Terraform scripts.  
 The package has been refactored into a modular structure where each rule is implemented in a separate module for better
 maintainability and extensibility.

@@ -40,7 +40,7 @@ class TerraformLinter:
 
 The tool implements a modular rule system organized into four distinct categories:
 
-#### ST Rules (`rules/st_rules.py`) - Style/Format
+#### ST Rules (`rules/st_rules/`) - Style/Format
 **Purpose**: Enforce code formatting and style consistency.
 
 **Core Rules**:
@@ -79,7 +79,7 @@ class STRules:
 - Parameter alignment validation
 - Regular expression-based pattern matching
 
-#### DC Rules (`rules/dc_rules.py`) - Documentation/Comments
+#### DC Rules (`rules/dc_rules/`) - Documentation/Comments
 **Purpose**: Ensure consistent documentation and comment formatting.
 
 **Core Rules**:
@@ -90,7 +90,7 @@ class STRules:
 - Format validation with precise spacing rules
 - Context-aware comment detection
 
-#### IO Rules (`rules/io_rules.py`) - Input/Output Organization
+#### IO Rules (`rules/io_rules/`) - Input/Output Organization
 **Purpose**: Enforce proper organization of variables, outputs, and file structure.
 
 **Core Rules**:
@@ -112,7 +112,7 @@ class STRules:
 - Variable reference tracking
 - File organization enforcement
 
-#### SC Rules (`rules/sc_rules.py`) - Security Code
+#### SC Rules (`rules/sc_rules/`) - Security Code
 **Purpose**: Enforce security best practices and prevent common security vulnerabilities in Terraform code.
 
 **Core Rules**:
@@ -161,17 +161,30 @@ class SCRules:
 
 ```yaml
 inputs:
-  directory:          # Target directory specification
-  ignore-rules:       # Selective rule exclusion
-  include-paths:      # Precise path inclusion
-  exclude-paths:      # Pattern-based path exclusion
-  fail-on-error:      # Workflow failure control
+  directory:               # Target directory specification
+  fail-on-error:           # Workflow failure control
+  deep-check:              # Opt-in SC.004 provider version probe (network + terraform)
+  ignore-rules:            # Selective rule exclusion (e.g., ST.001,ST.003)
+  rule-categories:         # Categories to run (ST,IO,DC,SC)
+  include-paths:           # Precise path inclusion
+  exclude-paths:           # Pattern-based path exclusion
+  changed-files-only:      # Limit checks to git-changed files
+  base-ref:                # Diff base for changed-files-only
+  performance-monitoring:  # Detailed performance analytics
+  report-format:           # text, json, or both
+  report-file:             # Generate report files (default: console-only)
+  detailed-summary:        # Detailed GitHub Actions summary
 
 outputs:
-  result:            # Overall lint result
-  error-count:       # Quantified error metrics
-  warning-count:     # Warning statistics
-  report-file:       # Generated report location
+  result:                 # Overall lint result
+  error-count:            # Quantified error metrics
+  warning-count:          # Warning statistics
+  violation-count:        # Total violations
+  files-processed:        # Files processed
+  execution-time:         # Execution time in seconds
+  rules-executed:         # Rules executed
+  report-file:            # Generated report location
+  performance-metrics:    # Performance metrics payload
 ```
 
 **Execution Pipeline**:

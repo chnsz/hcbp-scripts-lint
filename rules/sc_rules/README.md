@@ -341,6 +341,24 @@ variable "access_key" {
 - **Exposure Points**: Terraform state files, Terraform plan output, Terraform apply logs, CI/CD pipeline logs
 - **Mitigation**: Declaring sensitive variables prevents their values from being displayed in logs and state files
 
+### SC.006 - Hardcoded Credential Literal Check
+
+**Purpose**: Detect credential attribute string literals embedded in `.tf` files.
+
+**Validation Criteria**:
+- Flags `access_key` / `secret_key` / `token` / `api_key` / `password` / `private_key` / `security_token` string literals
+- Allows `var.*` references and placeholders (`CHANGEME`, etc.)
+- Does not scan `*.tfvars` or perform global entropy detection
+
+### SC.007 - Sensitive Variable Non-Empty Default Check
+
+**Purpose**: Sensitive-named variables must not declare a dangerous non-empty string default.
+
+**Validation Criteria**:
+- Uses the same name heuristics as SC.005
+- Allows missing default, `""`, `null`, and placeholders
+- Complements SC.005 (flag) with default hygiene
+
 ## 🔄 Backward Compatibility
 
 The package maintains full backward compatibility with the original `sc_rules.py` module. Existing code will continue to work without modifications:

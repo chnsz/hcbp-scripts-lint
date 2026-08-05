@@ -786,8 +786,8 @@ output "correct_output" {
 - Use automated formatting tools like `terraform fmt` to ensure compliance
 - Configure IDE/editor to highlight syntax violations
 
-**Cross-references**: Works with [ST.001](#st001---resource-and-data-source-naming-convention),
-                      [ST.003](#st003---parameter-assignment-formatting)
+**Cross-references**: Works with [ST.001](#st001---resource-and-data-source-instance-naming-convention),
+                      [ST.003](#st003---parameter-alignment-format-convention)
 
 ### ST.011 - Trailing Whitespace Check
 
@@ -850,8 +850,8 @@ variable "region" {
 - Use automated formatting tools like `terraform fmt` which removes trailing whitespace
 - Set up pre-commit hooks to prevent trailing whitespace from being committed
 
-**Cross-references**: Works with [ST.004](#st004---indentation-character-check),
-                      [ST.005](#st005---indentation-level-check)
+**Cross-references**: Works with [ST.004](#st004---indentation-character-convention),
+                      [ST.005](#st005---indentation-level-convention)
 
 ### ST.012 - File Header and Footer Whitespace Check
 

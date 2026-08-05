@@ -180,23 +180,26 @@ data "huaweicloud_compute_flavors" "test" {
 
 ### ST.003 - Parameter Alignment with Equals Signs
 
-**Rule Description:** Validates that parameter assignments within resource, data source, provider, locals, terraform,
-and variable blocks have properly aligned equals signs. Also supports terraform.tfvars files for variable assignment
-alignment checking.  
+**Rule Description:** Validates that parameter assignments have properly aligned equals signs within the same section.
+Supported blocks include resource, data, ephemeral, module, provider, locals, terraform, variable, output, import,
+moved, and check (including single-line `{ ... }` bodies). Also supports terraform.tfvars variable assignment alignment.  
 All equals signs must align at the same column position within the same group for optimal readability.
+
+**Detailed criteria:** See [ST.003 in st_rules.md](st_rules.md#st003---parameter-alignment-check).
 
 **Purpose:**
 - Improve code visual consistency
 - Enhance readability of parameter assignments
 - Enforce professional formatting standards
-- Support all Terraform block types including provider, locals, terraform, and variable blocks
-- Support terraform.tfvars files for variable assignment alignment
+- Support the block types listed above, plus terraform.tfvars
 - Intelligently handle nested object structures for proper parameter grouping
 - Group parameters based on empty lines (blank lines split groups, comment lines don't)
+- Sibling `param = {` stays in the current section; nested fields form their own section
 - Check alignment only within the same group
 - Provide comprehensive error reporting for all alignment issues
 - Properly filter out comment lines in all supported file types
-- Skip alignment checks for lines with ST.004, ST.005, or ST.008 issues
+- Skip lines with tabs (ST.004) or odd indentation (ST.005-class) so they do not set the equals baseline
+- Meta-parameters in resource/data/module/ephemeral require compact `=` spacing but are excluded from column alignment
 - Single-parameter groups are still checked for proper spacing
 
 **Error Example:**
@@ -682,6 +685,7 @@ log_error_func(file_path, "RULE_ID", "Error message", line_number)
 Create a new Python file in the appropriate rules directory:
 
 ```python
+# Example only — next free ST id may differ (current ST rules end at ST.014)
 # rules/st_rules/rule_015.py
 def check_st015_new_rule(file_path: str, content: str, log_error_func: Callable) -> None:
     """Check for new rule violations."""
@@ -707,7 +711,7 @@ from .rule_015 import check_st015_new_rule, get_rule_description as get_st015_de
 
 _rules_registry = {
     # ... existing rules ...
-    "ST.015": {
+    "ST.015": {  # example id — use the next available rule id
         "check_function": check_st015_new_rule,
         "description_function": get_st015_description,
         "name": "New Rule Name",
@@ -719,13 +723,14 @@ _rules_registry = {
 ### 3. Update Documentation
 
 Update the relevant documentation files:
-- `docs/rules/overview.md` - Add rule description
+- `docs/rules/<category>_rules.md` - Authoritative rule criteria (preferred)
+- `docs/rules/overview.md` - Add rule summary
 - `README.md` - Update rule count and list
-- `rules/README.md` - Add to rule table
+- `rules/README.md` / `rules/introduction.md` - Keep catalogs in sync
 
 ### 4. Add Tests
 
-Create test cases in the examples directory to validate the rule works correctly.
+Add good/bad fixtures under `acceptances/good|bad/<rule>/` (preferred). Use `examples/` only for demos.
 
 ## Best Practices
 

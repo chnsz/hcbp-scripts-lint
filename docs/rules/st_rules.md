@@ -1,5 +1,7 @@
 # ST (Style/Format) Rules Package
 
+> Authoritative ST criteria for this repo. Package-local summary: [`rules/st_rules/README.md`](../../rules/st_rules/README.md).
+
 This package contains all style and format related checking rules for Terraform scripts.  
 The package has been refactored into a modular structure where each rule is implemented in a separate module for better
 maintainability and extensibility.
@@ -20,7 +22,7 @@ st_rules/
 ├── rule_007.py   # ST.007 - Parameter block spacing check
 ├── rule_008.py   # ST.008 - Meta-parameter spacing check
 ├── rule_009.py   # ST.009 - Variable definition order check
-├── rule_010.py   # ST.010 - Resource, data source, variable, and output quote check
+├── rule_010.py   # ST.010 - Resource, data source, variable, output, and provider quote check
 ├── rule_011.py   # ST.011 - Trailing whitespace check
 ├── rule_012.py   # ST.012 - File header and footer whitespace check
 ├── rule_013.py   # ST.013 - Directory naming convention check
@@ -40,7 +42,7 @@ st_rules/
 | ST.007 | Parameter block spacing check | Validates spacing between different types of parameters within resource, data source, provider, terraform, and locals blocks | `rule_007.py` |
 | ST.008 | Meta-parameter spacing check | Validates spacing around meta-parameters (count, for_each, provider, lifecycle, depends_on) | `rule_008.py` |
 | ST.009 | Variable definition order check | Validates variable order consistency between files | `rule_009.py` |
-| ST.010 | Resource, data source, variable, and output quote check | Ensures double quotes around resource/data source names | `rule_010.py` |
+| ST.010 | Resource, data source, variable, output, and provider quote check | Ensures double quotes around resource/data/variable/output/provider names | `rule_010.py` |
 | ST.011 | Trailing whitespace check | Removes trailing spaces and tabs from line endings | `rule_011.py` |
 | ST.012 | File header and footer whitespace check | Ensures no extra whitespace at the beginning or end of the file | `rule_012.py` |
 | ST.013 | Directory naming convention check | Validates directory names contain only letters, numbers, and hyphens, and start/end with letters | `rule_013.py` |
