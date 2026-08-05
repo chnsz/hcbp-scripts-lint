@@ -1,5 +1,7 @@
 # SC (Security Code) Rules Package
 
+> Authoritative SC criteria for this repo. Package-local summary: [`rules/sc_rules/README.md`](../../rules/sc_rules/README.md).
+
 This package contains all security-related checking rules for Terraform scripts.  
 The package has been refactored into a modular structure where each rule is implemented in a separate module for better
 maintainability and extensibility.
@@ -251,6 +253,95 @@ locals {
 - Use `for_each` instead of direct indexing when possible
 - Use `coalesce()` for multiple fallback options
 - Implement proper validation in variable definitions
+
+### SC.002 - Terraform Required Version Declaration Check
+
+**Purpose**: Validates that `providers.tf` files contain proper `terraform` block with `required_version` declaration.
+
+**Validation Criteria**:
+- Ensures consistent Terraform version usage across the project
+- Prevents version compatibility issues
+- Supports multiple version constraint formats (`>= 1.3.0`, `~> 1.0`, `>= 0.14.0, < 2.0.0`, etc.)
+- Intelligent detection of terraform block structure and required_version declaration
+
+**Examples**:
+
+**✅ Valid**:
+```hcl
+terraform {
+  required_version = ">= 1.3.0"
+
+  required_providers {
+    huaweicloud = {
+      source  = "huaweicloud/huaweicloud"
+      version = ">= 1.72.1"
+    }
+  }
+}
+```
+
+**❌ Invalid**:
+```hcl
+# Missing required_version declaration
+terraform {
+  required_providers {
+    huaweicloud = {
+      source  = "huaweicloud/huaweicloud"
+      version = ">= 1.72.1"
+    }
+  }
+}
+```
+
+### SC.003 - Terraform Version Compatibility Check
+
+**Purpose**: Analyzes Terraform configuration to determine minimum required version and validates that declared
+`required_version` is compatible with used features.
+
+**Version Requirements Detection**:
+- `variable/output sensitive = "true"` requires >= 0.14.0
+- `variable nullable = "true"` requires >= 1.1.0
+- `variable type with optional()` requires >= 1.3.0
+- `resource lifecycle precondition` requires >= 1.2.0
+- `variable validation with other variable references` requires >= 1.9.0
+- `import block with for_each` requires >= 1.7.0
+- Default minimum version: 0.12.0
+
+**Examples**:
+
+**✅ Compatible Version**:
+```hcl
+terraform {
+  required_version = ">= 1.9.0"  # Compatible with validation.condition referencing other variables
+}
+
+variable "workspace_name" {
+  type        = string
+  description = "Workspace name"
+
+  validation {
+    condition     = var.workspace_id != "" || var.workspace_name != ""
+    error_message = "At least one must be provided."
+  }
+}
+```
+
+**❌ Incompatible Version**:
+```hcl
+terraform {
+  required_version = ">= 1.0.0"  # Too low for validation.condition with other variable references
+}
+
+variable "workspace_name" {
+  type        = string
+  description = "Workspace name"
+
+  validation {
+    condition     = var.workspace_id != "" || var.workspace_name != ""
+    error_message = "At least one must be provided."
+  }
+}
+```
 
 ### SC.004 - HuaweiCloud Provider Version Validity Check
 

@@ -241,46 +241,25 @@ python3.10 .github/scripts/terraform_lint.py \
 `examples/` remains useful for demos and broader samples; prefer `acceptances/` when adding or regressing a specific
 rule.
 
-If a `tests/` pytest suite is present in your checkout, you can also run:
-
-```bash
-# Run all tests (when present)
-python3 -m pytest tests/
-
-# Run specific category tests (when present)
-python3 -m pytest tests/test_st_rules.py
-python3 -m pytest tests/test_sc_rules.py
-
-# Run with coverage (when present)
-python3 -m pytest --cov=.github/scripts tests/
-```
+This repository does not currently ship a top-level `tests/` pytest suite. Prefer acceptance fixtures above; if you add
+unit tests later, place them under `tests/` and document how to run them in the PR.
 
 ### Writing Tests
 
-- **Test Coverage**: Aim for high test coverage of new code
-- **Test Cases**: Include both positive and negative test cases
-- **Edge Cases**: Test edge cases and error conditions
-- **Documentation**: Document test purposes and expected outcomes
+- **Fixtures first**: Add good/bad cases under `acceptances/` for rule behavior
+- **Test Cases**: Include both positive and negative cases
+- **Edge Cases**: Cover edge cases and error conditions
+- **Documentation**: Note expected findings (rule id / line) in the fixture README when helpful
 
-### Test Structure
+### Fixture Layout
 
-```python
-def test_rule_implementation():
-    """Test that rule correctly identifies violations."""
-    # Arrange
-    test_content = """
-    resource "huaweicloud_compute_instance" "bad_name" {
-      name = "tf_test_demo"
-    }
-    """
-
-    # Act
-    errors = check_rule(test_content)
-
-    # Assert
-    assert len(errors) == 1
-    assert "ST.001" in errors[0]
 ```
+acceptances/
+├── good/<rule>/case-name/   # expect no findings for the rule under test
+└── bad/<rule>/case-name/    # expect the target rule to report
+```
+
+Run with `--ignore-rules` set to all other rule IDs when validating a single rule.
 
 ## Documentation
 
