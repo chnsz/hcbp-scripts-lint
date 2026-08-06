@@ -40,7 +40,7 @@ st_rules/
 | ST.005 | Indentation level check | Validates consistent 2-space indentation levels. For terraform.tfvars files, heredoc blocks (<<EOT, <<EOF, etc.) are excluded from validation | `rule_005.py` |
 | ST.006 | Resource and data source spacing check | Ensures exactly 1 empty line between resource/data blocks | `rule_006.py` |
 | ST.007 | Parameter block spacing check | Validates spacing between different types of parameters within resource, data source, provider, terraform, and locals blocks | `rule_007.py` |
-| ST.008 | Meta-parameter spacing check | Validates spacing around meta-parameters (count, for_each, provider, lifecycle, depends_on) | `rule_008.py` |
+| ST.008 | Meta-parameter spacing check | Validates blank lines around meta-parameters (incl. before structure/dynamic blocks) | `rule_008.py` |
 | ST.009 | Variable definition order check | Validates variable order consistency between files | `rule_009.py` |
 | ST.010 | Resource, data source, variable, output, and provider quote check | Ensures double quotes around resource/data/variable/output/provider names | `rule_010.py` |
 | ST.011 | Trailing whitespace check | Removes trailing spaces and tabs from line endings | `rule_011.py` |
@@ -351,16 +351,17 @@ terraform {
 - **Meta-parameters**: count, for_each, provider, lifecycle, depends_on
 - **Meta-parameter to meta-parameter**: Exactly 1 blank line required between different meta-parameters
 - **Meta-parameter to non-meta-parameter**: Exactly 1 blank line required between meta-parameters and other parameters
-  (only when no other meta-parameters are present between them)
+  or structure/dynamic blocks (only when no other meta-parameters are present between them)
 - **First meta-parameter**: No blank lines allowed before the first meta-parameter in a block
 - **Dynamic block for_each**: for_each inside dynamic blocks should be tightly coupled with the dynamic keyword (no
   blank line)
 
 **Special Cases**:
 - When meta-parameters are adjacent to other meta-parameters, only check spacing between these meta-parameters
-- When meta-parameters are followed by non-meta-parameters, check spacing only if there are no other meta-parameters
-  between them
+- When meta-parameters are followed by non-meta neighbors (`=` assignments or structure/dynamic blocks), check spacing
+  only if there are no other meta-parameters between them
 - for_each inside dynamic blocks is treated as a special case and should be tightly coupled with the dynamic keyword
+- ST.007 defers meta-parameter blank-line spacing to ST.008 (including meta → structure/dynamic)
 
 ### ST.009 - Variable Definition Order Check
 

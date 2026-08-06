@@ -317,17 +317,19 @@ other parameters.
 **Validation Criteria:**
 - **Meta-parameters**: count, for_each, provider, lifecycle, depends_on
 - **Meta-parameter to meta-parameter**: Exactly 1 blank line required between different meta-parameters
-- **Meta-parameter to non-meta-parameter**: Exactly 1 blank line required between meta-parameters and other parameters
-  (only when no other meta-parameters are present between them)
+- **Meta-parameter to non-meta neighbor**: Exactly 1 blank line required between meta-parameters and other parameters
+  **or structure/dynamic blocks** (e.g. `count` then `network {` / `dynamic "x" {`), only when no other meta-parameters
+  are present between them
 - **First meta-parameter**: No blank lines allowed before the first meta-parameter in a block
 - **Dynamic block for_each**: for_each inside dynamic blocks should be tightly coupled with the dynamic keyword (no
   blank line)
 
 **Special Cases:**
 - When meta-parameters are adjacent to other meta-parameters, only check spacing between these meta-parameters
-- When meta-parameters are followed by non-meta-parameters, check spacing only if there are no other meta-parameters
-  between them
+- When meta-parameters are followed by non-meta neighbors (`=` assignments or structure/dynamic blocks), check spacing
+  only if there are no other meta-parameters between them
 - for_each inside dynamic blocks is treated as a special case and should be tightly coupled with the dynamic keyword
+- ST.007 defers meta-parameter blank-line spacing to ST.008 (including meta → structure/dynamic)
 
 **Purpose:**
 - Improve code readability by creating clear visual separation between meta-parameters and other parameters
@@ -350,6 +352,14 @@ resource "huaweicloud_compute_instance" "test" {
 
 
   depends_on = [huaweicloud_vpc.test]
+}
+
+# ❌ Error: no blank line between count and a following structure block
+resource "huaweicloud_vpc" "gap" {
+  count = 1
+  network {
+    uuid = var.subnet_id
+  }
 }
 ```
 

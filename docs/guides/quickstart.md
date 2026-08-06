@@ -174,7 +174,7 @@ output:
 - **ST.005**: Indentation level check
 - **ST.006**: Resource and data source spacing check
 - **ST.007**: Parameter block spacing check
-- **ST.008**: Meta-parameter spacing check
+- **ST.008**: Meta-parameter spacing check (incl. meta → structure/dynamic blank lines)
 - **ST.009**: Variable definition order check
 - **ST.010**: Resource, data source, variable, and output quote check
 - **ST.011**: Trailing whitespace check
