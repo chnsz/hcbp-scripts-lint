@@ -100,7 +100,7 @@ Each rule package follows a consistent design pattern:
 | ST.005 | Indentation Level | Follow 2-space indentation rule (excludes heredoc blocks in .tfvars files) | ✅ Modular |
 | ST.006 | Resource Spacing | One empty line between resource blocks | ✅ Modular |
 | ST.007 | Parameter Block Spacing | Validates spacing between different types of parameters within resource, data source, provider, terraform, and locals blocks | ✅ Modular |
-| ST.008 | Meta-parameter Spacing | Validates spacing around meta-parameters (count, for_each, provider, lifecycle, depends_on) | ✅ Modular |
+| ST.008 | Meta-parameter Spacing | Validates blank lines around meta-parameters (incl. before structure/dynamic blocks) | ✅ Modular |
 | ST.009 | Variable Order | Variable definition order matches usage order | ✅ Modular |
 | ST.010 | Quote Usage | Double quotes around resource, data source, variable, and output names | ✅ Modular |
 | ST.011 | Trailing Whitespace | No trailing spaces or tabs at line ends | ✅ Modular |

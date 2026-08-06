@@ -240,7 +240,7 @@ resource "huaweicloud_compute_instance" "test" {
 - **ST.005**: Indentation level validation (2 spaces per level)
 - **ST.006**: Resource and data source spacing check
 - **ST.007**: Parameter block spacing check (within resource, data source, provider, terraform, and locals blocks)
-- **ST.008**: Meta-parameter spacing check
+- **ST.008**: Meta-parameter spacing check (incl. meta → structure/dynamic blank lines)
 - **ST.009**: Variable definition order validation
 - **ST.010**: Quote usage consistency check
 - **ST.011**: Trailing whitespace detection

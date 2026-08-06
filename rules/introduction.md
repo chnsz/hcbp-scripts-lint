@@ -551,17 +551,22 @@ resource "huaweicloud_compute_instance" "test" {
 
 **Validation Criteria:**
 - Exactly 1 blank line between different meta-parameters
-- Exactly 1 blank line between a meta-parameter and following non-meta parameters (when no other meta sits between)
+- Exactly 1 blank line between a meta-parameter and following non-meta neighbors: `=` assignments **or**
+  structure/dynamic blocks such as `network {` / `dynamic "x" {` (when no other meta sits between)
 - No blank lines before the first meta-parameter in a block
-- `for_each` inside `dynamic` blocks is not treated as a resource-level meta-parameter for this rule
+- `for_each` inside `dynamic` blocks is not treated as a resource-level meta-parameter for blank-line checks against
+  the `dynamic` keyword; ST.007 defers meta blank-line spacing (including meta → structure/dynamic) to ST.008
 
 **Purpose:**
 - Keep meta-parameters visually grouped and easy to scan
-- Avoid ambiguous adjacency between lifecycle/provider meta and normal attributes
+- Avoid ambiguous adjacency between lifecycle/provider meta and normal attributes or nested blocks
 
 **Best Practices:**
 - Place meta-parameters near the top of the resource/data block
-- Keep one blank line between the meta group and ordinary attributes
+- Keep one blank line between the meta group and ordinary attributes or structure/dynamic blocks
+
+**Detailed criteria:** See [ST.008 in docs/rules/st_rules.md](../docs/rules/st_rules.md#st008---meta-parameter-spacing-check).
+Fixtures: [`acceptances/good/st008`](../acceptances/good/st008/), [`acceptances/bad/st008`](../acceptances/bad/st008/).
 
 **Cross-references**: Works with [ST.003](#st003---parameter-alignment-format-convention),
                       [ST.007](#st007---parameter-block-spacing-check)

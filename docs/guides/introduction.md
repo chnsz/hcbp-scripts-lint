@@ -51,7 +51,7 @@ The tool implements a modular rule system organized into four distinct categorie
 - **ST.005**: Indentation level consistency (2 spaces per level, excludes heredoc blocks in .tfvars files)
 - **ST.006**: Resource and data source block spacing (exactly 1 empty line)
 - **ST.007**: Parameter block spacing check (within resource, data source, provider, terraform, and locals blocks)
-- **ST.008**: Meta-parameter spacing check (validates spacing around meta-parameters like count, for_each, provider, lifecycle, depends_on)
+- **ST.008**: Meta-parameter spacing check (blank lines around count/for_each/provider/lifecycle/depends_on, including before structure/dynamic blocks)
 - **ST.009**: Variable definition order check (definition order in `variables.tf` must match first-use order across
   sibling `*.tf` files, excluding `variables.tf`)
 - **ST.010**: Resource, data source, variable, and output quote check (double quotes around names)

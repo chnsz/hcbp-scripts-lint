@@ -8,9 +8,10 @@ with other code elements within Terraform resource and data source blocks.
 
 Rule Specification:
 1. Meta-parameters must have exactly 1 blank line between them and other parameters
-2. Meta-parameters must have exactly 1 blank line between each other
-3. If meta-parameter is the first line in a block, it must not have blank lines before it
-4. Reports specific line numbers for violations
+2. Meta-parameters must have exactly 1 blank line between them and following structure/dynamic blocks
+3. Meta-parameters must have exactly 1 blank line between each other
+4. If meta-parameter is the first line in a block, it must not have blank lines before it
+5. Reports specific line numbers for violations
 
 Meta-parameters include:
 - count: Resource/data source iteration based on conditions
@@ -203,6 +204,29 @@ def _extract_parameters_from_resource(resource_lines: List[str], resource_start_
         
         # If not a meta-parameter, check for other parameters (for spacing context)
         if not meta_param_found:
+            # Record dynamic blocks as structure markers so top-level meta → dynamic
+            # spacing is checked. Continue scanning inside for for_each / content.
+            dynamic_match = re.match(
+                r'dynamic\s+(?:"[^"]+"|\'[^\']+\'|[A-Za-z_][A-Za-z0-9_]*)\s*\{',
+                line,
+            )
+            if dynamic_match:
+                param_line = resource_start_line + i
+                brace_count = 1
+                j = i + 1
+                while j < len(resource_lines) and brace_count > 0:
+                    current_line = resource_lines[j]
+                    brace_count += current_line.count('{') - current_line.count('}')
+                    j += 1
+                parameters.append({
+                    'type': 'structure',
+                    'name': 'dynamic',
+                    'start_line': param_line,
+                    'end_line': resource_start_line + j - 1,
+                })
+                i += 1
+                continue
+
             # Check for structure blocks (like content {, lifecycle {, etc.)
             block_match = re.match(r'(\w+)\s*\{', line)
             if block_match:
@@ -332,8 +356,15 @@ def _check_meta_parameter_spacing(parameters: List[Dict], resource_name: str, co
                             has_other_meta_between = True
                             break
                 
-                # Only check spacing with non-meta parameters if there are no other meta-parameters between
-                if not has_other_meta_between and next_param['type'] == 'other':
+                # Check spacing with non-meta neighbors (assignments and structure /
+                # dynamic blocks). ST.007 defers meta spacing to ST.008, so meta →
+                # structure (e.g. count then network { / dynamic) must be covered here.
+                # Skip dynamic_internal (for_each inside dynamic) — that pair is handled
+                # by the before/after rules for content / dynamic_internal themselves.
+                if (
+                    not has_other_meta_between
+                    and next_param['type'] in ('other', 'structure')
+                ):
                     param_end = param['end_line'] - 1  # Convert to 0-based indexing
                     next_line = next_param['start_line'] - 1  # Convert to 0-based indexing
                     blank_lines = _count_blank_lines_between(lines, param_end, next_line)
@@ -487,16 +518,18 @@ def get_rule_description() -> dict:
         "name": "Meta-parameter spacing check",
         "description": (
             "Validates that meta-parameters (count, for_each, provider, lifecycle, depends_on) "
-            "maintain proper spacing with other code elements within Terraform resource and "
-            "data source blocks. This ensures consistent visual separation and improved readability."
+            "maintain exactly one blank line between each other and between following non-meta "
+            "neighbors (attribute assignments or structure/dynamic blocks such as network { / "
+            "dynamic \"x\" {) within Terraform resource and data source blocks. ST.007 defers "
+            "meta blank-line spacing to this rule."
         ),
         "category": "Style/Format",
         "severity": "error",
         "rationale": (
             "Proper spacing around meta-parameters improves code readability by creating "
-            "clear visual separation between meta-parameters and regular resource parameters. "
-            "This makes it easier to identify conditional resource creation, dependencies, "
-            "and lifecycle management at a glance."
+            "clear visual separation between meta-parameters and regular resource parameters "
+            "or nested structure/dynamic blocks. This makes it easier to identify conditional "
+            "resource creation, dependencies, and lifecycle management at a glance."
         ),
         "examples": {
             "valid": [
@@ -508,6 +541,17 @@ resource "huaweicloud_compute_instance" "test" {
   image_id = var.image_id
 
   depends_on = [huaweicloud_vpc.test]
+}
+''',
+                '''
+resource "huaweicloud_vpc" "test" {
+  count = var.create_vpc ? 1 : 0
+
+  network {
+    uuid = var.subnet_id
+  }
+
+  name = var.vpc_name
 }
 ''',
                 '''
@@ -537,6 +581,14 @@ resource "huaweicloud_compute_instance" "test" {
 ''',
                 '''
 resource "huaweicloud_vpc" "test" {
+  count = 1
+  network {  # Missing blank line between count and structure block
+    uuid = var.subnet_id
+  }
+}
+''',
+                '''
+resource "huaweicloud_vpc" "test" {
   name = var.vpc_name
   count = var.create_vpc ? 1 : 0  # Missing blank line before count
   depends_on = [huaweicloud_availability_zones.test]  # Missing blank line between count and depends_on
@@ -550,6 +602,7 @@ resource "huaweicloud_vpc" "test" {
         "configuration": {
             "required_blank_lines_around_meta_parameters": 1,
             "required_blank_lines_between_meta_parameters": 1,
+            "required_blank_lines_before_structure_or_dynamic": 1,
             "no_blank_lines_before_first_meta_parameter": True
         }
     }

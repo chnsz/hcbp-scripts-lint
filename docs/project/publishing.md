@@ -100,7 +100,7 @@ git push origin v1
 - ST.005: Indentation level check (2 spaces per level, excludes heredoc blocks in .tfvars files)
 - ST.006: Resource and data source spacing check (exactly 1 empty line between blocks)
 - ST.007: Parameter block spacing check
-- ST.008: Meta-parameter spacing check (count, for_each, provider, lifecycle, depends_on)
+- ST.008: Meta-parameter spacing check (count, for_each, provider, lifecycle, depends_on; incl. meta → structure/dynamic)
 - ST.009: Variable definition order check (definition order in `variables.tf` must match first-use order across sibling
   `*.tf` files, excluding `variables.tf`)
 - ST.010: Resource, data source, variable, and output quote check (double quotes around names)
